@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -23,13 +24,25 @@ public class SimpleHash {
 
     @Value("${memorySize:1024}")
     int storeSize;
+    int hashSize;
 
     @PostConstruct
     public void init() {
         try {
             store = new DataMedia("hashData", storeSize);
-            ih = new IndexHelper("hashIndex", storeSize / 8);
+            ih = new IndexHelper("hashIndex", storeSize / 8) {
+                public void wrapData(DataHelper dataHelper) {
+                    if (dataHelper.getType().equals("hash")) {
+                        if (!kv.containsKey(dataHelper.getHash())) {
+                            kv.put(dataHelper.getHash(), new HashMap<String, DataHelper>());
+                            hashSize++;
+                        }
+                        ((Map) kv.get(dataHelper.getHash())).put(dataHelper.getKey(), dataHelper);
+                    }
+                }
+            };
             ih.recoverIndex();
+            log.info("recover data hash size: {}", hashSize);
         } catch (Exception e) {
             log.error("init store file error", e);
         }
@@ -57,7 +70,7 @@ public class SimpleHash {
         try {
             List<String> resp = new ArrayList<>();
             long start = System.currentTimeMillis();
-            for (Map.Entry<String, DataHelper> e : ih.hash.get(hash).entrySet()) {
+            for (Map.Entry<String, DataHelper> e : ((Map<String, DataHelper>) ih.kv.get(hash)).entrySet()) {
                 if (e.getKey().equals(field))
                     return store.get(e.getValue());
             }
@@ -70,11 +83,11 @@ public class SimpleHash {
 
     public byte[][] read(String hash) {
         try {
-            byte[][] data = new byte[ih.hash.get(hash).size() * 2][];
+            byte[][] data = new byte[((Map) ih.kv.get(hash)).size() * 2][];
             List<String> resp = new ArrayList<>();
             long start = System.currentTimeMillis();
             int i = 0;
-            for (Map.Entry<String, DataHelper> e : ih.hash.get(hash).entrySet()) {
+            for (Map.Entry<String, DataHelper> e : ((Map<String, DataHelper>) ih.kv.get(hash)).entrySet()) {
                 data[i++] = e.getKey().getBytes();
                 data[i++] = store.get(e.getValue());
             }

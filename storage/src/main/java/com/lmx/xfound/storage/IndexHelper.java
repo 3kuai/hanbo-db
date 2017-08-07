@@ -3,10 +3,7 @@ package com.lmx.xfound.storage;
 import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -16,13 +13,17 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Slf4j
 @EqualsAndHashCode(callSuper = false)
-public class IndexHelper extends BaseMedia {
-    public static Map<String, DataHelper> kv = new ConcurrentHashMap<>();
-    public static Map<String, List<DataHelper>> list = new ConcurrentHashMap<>();
-    public static Map<String, Map<String, DataHelper>> hash = new ConcurrentHashMap<>();
+public abstract class IndexHelper extends BaseMedia {
+    public static Map<String, Object> kv = new ConcurrentHashMap<>();
+//    public static Map<String, List<DataHelper>> list = new ConcurrentHashMap<>();
+//    public static Map<String, Map<String, DataHelper>> hash = new ConcurrentHashMap<>();
 
     public IndexHelper(String fileName, int size) throws Exception {
         super(fileName, size);
+    }
+
+    public static boolean existKey(String key) {
+        return kv.containsKey(key);
     }
 
     public int add(DataHelper dh) throws Exception {
@@ -56,21 +57,20 @@ public class IndexHelper extends BaseMedia {
         buffer.position(0);
         buffer.putInt(curPos);//head 4 byte in last postion
         buffer.rewind();
-
-        kv.put(key, dh);
-        if (dh.getType().equals("list")) {
-            if (!list.containsKey(key)) {
-                list.put(key, new LinkedList<DataHelper>());
+        if (dh.getType().equals("kv") && !kv.containsKey(key)) {
+            kv.put(key, dh);
+        } else if (dh.getType().equals("list")) {
+            if (!kv.containsKey(key)) {
+                kv.put(key, new LinkedList<DataHelper>());
             }
-            list.get(key).add(dh);
-            return list.get(key).size();
-        }
-        if (dh.getType().equals("hash")) {
-            if (!hash.containsKey(dh.getHash())) {
-                hash.put(dh.getHash(), new HashMap<String, DataHelper>());
+            ((List) kv.get(key)).add(dh);
+            return ((List) kv.get(key)).size();
+        } else if (dh.getType().equals("hash")) {
+            if (!kv.containsKey(dh.getHash())) {
+                kv.put(dh.getHash(), new HashMap<String, DataHelper>());
             }
-            hash.get(dh.getHash()).put(key, dh);
-            return hash.get(dh.getHash()).size();
+            ((Map) kv.get(dh.getHash())).put(key, dh);
+            return ((Map) kv.get(dh.getHash())).size();
         }
         return 0;
     }
@@ -110,24 +110,10 @@ public class IndexHelper extends BaseMedia {
             dh.pos = dataIndex;
             dh.length = dataLength;
             dh.type = type;
-            if (dh.getType().equals("kv")) {
-                if (!kv.containsKey(key)) {
-                    kv.put(key, dh);
-                }
-            }
-            if (dh.getType().equals("list")) {
-                if (!list.containsKey(key)) {
-                    list.put(key, new LinkedList<DataHelper>());
-                }
-                list.get(key).add(dh);
-            }
-            if (dh.getType().equals("hash")) {
-                if (!hash.containsKey(hash_)) {
-                    hash.put(hash_, new HashMap<String, DataHelper>());
-                }
-                hash.get(hash_).put(key, dh);
-            }
+            dh.hash = hash_;
+            wrapData(dh);
         }
-        log.info("recover data index size: {}", kv.size());
     }
+
+    public abstract void wrapData(DataHelper dataHelper);
 }

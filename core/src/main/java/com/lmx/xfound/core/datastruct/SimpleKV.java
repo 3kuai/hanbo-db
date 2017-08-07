@@ -20,13 +20,24 @@ public class SimpleKV {
 
     @Value("${memorySize:1024}")
     int storeSize;
+    int kvSize;
 
     @PostConstruct
     public void init() {
         try {
             store = new DataMedia("valueData", storeSize);
-            ih = new IndexHelper("keyIndex", storeSize / 8);
+            ih = new IndexHelper("keyIndex", storeSize / 8) {
+                public void wrapData(DataHelper dataHelper) {
+                    if (dataHelper.getType().equals("kv")) {
+                        if (!kv.containsKey(dataHelper.getKey())) {
+                            kv.put(dataHelper.getKey(), dataHelper);
+                            kvSize++;
+                        }
+                    }
+                }
+            };
             ih.recoverIndex();
+            log.info("recover data kv size: {}", kvSize);
         } catch (Exception e) {
             log.error("init store file error", e);
         }
@@ -49,7 +60,7 @@ public class SimpleKV {
     public byte[] read(String request) {
         try {
             long start = System.currentTimeMillis();
-            byte[] data = store.get(ih.kv.get(request));
+            byte[] data = store.get((DataHelper) ih.kv.get(request));
             String resp = new String(data, "utf8");
             log.debug("key={},value={} cost={}ms", request, resp, (System.currentTimeMillis() - start));
             return data;
@@ -57,5 +68,10 @@ public class SimpleKV {
             log.error("read data error", e);
         }
         return null;
+    }
+
+    public void remove(String key) {
+        ih.kv.remove(key);
+        store.remove((DataHelper) ih.kv.get(key));
     }
 }

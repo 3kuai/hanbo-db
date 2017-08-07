@@ -28,6 +28,7 @@ public class DataMedia extends BaseMedia {
         byte[] v_ = v.getBytes(CHARSET);
         buffer.putInt(v_.length);
         buffer.put(v_);
+        buffer.putChar(NORMAL);
         DataHelper dh = new DataHelper();
         dh.key = k_;
         dh.pos = pos == 0 ? 4 + 4 : pos + 4;
@@ -54,6 +55,7 @@ public class DataMedia extends BaseMedia {
         byte[] v_ = v.getBytes(CHARSET);
         buffer.putInt(v_.length);
         buffer.put(v_);
+        buffer.putChar(NORMAL);
         DataHelper dh = new DataHelper();
         dh.key = k_;
         dh.pos = pos == 0 ? 4 + 4 : pos + 4;
@@ -89,6 +91,7 @@ public class DataMedia extends BaseMedia {
         byte[] v_ = v.getBytes(CHARSET);
         buffer.putInt(v_.length);
         buffer.put(v_);
+        buffer.putChar(NORMAL);
         DataHelper dh = new DataHelper();
         dh.key = k_;
         dh.hash = hash;
@@ -106,7 +109,15 @@ public class DataMedia extends BaseMedia {
         buffer.position(dh.pos);
         byte[] data = new byte[dh.length];
         buffer.get(data);
+        if (buffer.getChar() == DELETE)
+            return null;
         buffer.rewind();
         return data;
+    }
+
+    public void remove(DataHelper dh) {
+        buffer.position(dh.pos + dh.length);
+        buffer.putChar(DELETE);
+        buffer.rewind();
     }
 }

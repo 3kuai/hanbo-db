@@ -12,4 +12,5 @@ public class DataHelper {
     String hash;
     int pos;
     int length;
+    long expire;
 }
