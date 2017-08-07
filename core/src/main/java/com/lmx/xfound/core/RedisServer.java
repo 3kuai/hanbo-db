@@ -538,7 +538,7 @@ public interface RedisServer {
      * @param value1
      * @return IntegerReply
      */
-    public IntegerReply lpush(byte[] key0, byte[][] value1) throws RedisException;
+    public Reply lpush(byte[] key0, byte[][] value1) throws RedisException;
 
     /**
      * Prepend a value to a list, only if the list exists
@@ -621,7 +621,7 @@ public interface RedisServer {
      * @param value1
      * @return IntegerReply
      */
-    public IntegerReply rpush(byte[] key0, byte[][] value1) throws RedisException;
+    public Reply rpush(byte[] key0, byte[][] value1) throws RedisException;
 
     /**
      * Append a value to a list, only if the list exists
@@ -1008,7 +1008,7 @@ public interface RedisServer {
      * @param value2
      * @return IntegerReply
      */
-    public IntegerReply hset(byte[] key0, byte[] field1, byte[] value2) throws RedisException;
+    public Reply hset(byte[] key0, byte[] field1, byte[] value2) throws RedisException;
 
     /**
      * Set the value of a hash field, only if the field does not exist

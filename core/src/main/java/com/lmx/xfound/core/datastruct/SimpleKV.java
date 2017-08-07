@@ -1,12 +1,15 @@
 package com.lmx.xfound.core.datastruct;
 
+import com.google.common.base.Charsets;
 import com.lmx.xfound.storage.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.RedisSystemException;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 
 /**
  * 基于内存读写key value操作,数据可持久,零延迟
@@ -14,7 +17,7 @@ import java.nio.ByteBuffer;
  */
 @Component
 @Slf4j
-public class SimpleKV {
+public class SimpleKV extends BaseOP {
     DataMedia store;
     IndexHelper ih;
 
@@ -43,25 +46,30 @@ public class SimpleKV {
         }
     }
 
-    public void write(String request) {
+    public boolean write(String key, String value) {
         try {
-            ByteBuffer b = ByteBuffer.allocateDirect(128);
-            int length = request.getBytes().length;
-            b.putInt(length);
-            b.put(request.getBytes("utf8"));
-            b.flip();
-            DataHelper dh = store.add(b);
-            ih.add(dh);
+            if (super.write(key, value)) {
+                ByteBuffer b = ByteBuffer.allocateDirect(128);
+                String request = key + ":" + value;
+                int length = request.getBytes().length;
+                b.putInt(length);
+                b.put(request.getBytes(Charsets.UTF_8));
+                b.flip();
+                DataHelper dh = store.add(b);
+                ih.add(dh);
+                return true;
+            }
         } catch (Exception e) {
             log.error("write data error", e);
         }
+        return false;
     }
 
     public byte[] read(String request) {
         try {
             long start = System.currentTimeMillis();
             byte[] data = store.get((DataHelper) ih.kv.get(request));
-            String resp = new String(data, "utf8");
+            String resp = new String(data, Charsets.UTF_8);
             log.debug("key={},value={} cost={}ms", request, resp, (System.currentTimeMillis() - start));
             return data;
         } catch (Exception e) {
@@ -70,8 +78,13 @@ public class SimpleKV {
         return null;
     }
 
-    public void remove(String key) {
-        ih.kv.remove(key);
-        store.remove((DataHelper) ih.kv.get(key));
+    @Override
+    public boolean checkKeyType(String key) {
+        return isExist(key) ? IndexHelper.type(key) instanceof DataHelper : true;
+    }
+
+    @Override
+    public void removeData(String key) {
+        store.remove((DataHelper) IndexHelper.kv.get(key));
     }
 }

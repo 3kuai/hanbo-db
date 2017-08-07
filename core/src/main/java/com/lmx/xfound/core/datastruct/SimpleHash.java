@@ -18,7 +18,7 @@ import java.util.Map;
  */
 @Component
 @Slf4j
-public class SimpleHash {
+public class SimpleHash extends BaseOP {
     DataMedia store;
     IndexHelper ih;
 
@@ -48,22 +48,26 @@ public class SimpleHash {
         }
     }
 
-    public void write(String hash, String request) {
+    public boolean write(String hash, String key, String value) {
         try {
-            ByteBuffer b = ByteBuffer.allocateDirect(128);
-            int hashL = hash.getBytes().length;
-            b.putInt(hashL);
-            b.put(hash.getBytes("utf8"));
-
-            int length = request.getBytes().length;
-            b.putInt(length);
-            b.put(request.getBytes("utf8"));
-            b.flip();
-            DataHelper dh = store.addHash(b);
-            ih.add(dh);
+            if (super.write(key, value)) {
+                ByteBuffer b = ByteBuffer.allocateDirect(128);
+                int hashL = hash.getBytes().length;
+                b.putInt(hashL);
+                b.put(hash.getBytes("utf8"));
+                String request = key + ":" + value;
+                int length = request.getBytes().length;
+                b.putInt(length);
+                b.put(request.getBytes("utf8"));
+                b.flip();
+                DataHelper dh = store.addHash(b);
+                ih.add(dh);
+                return true;
+            }
         } catch (Exception e) {
             log.error("write list data error", e);
         }
+        return false;
     }
 
     public byte[] read(String hash, String field) {
@@ -97,5 +101,17 @@ public class SimpleHash {
             log.error("read list data error", e);
         }
         return null;
+    }
+
+    @Override
+    public boolean checkKeyType(String key) {
+        return isExist(key) ? IndexHelper.type(key) instanceof Map : true;
+    }
+
+    @Override
+    public void removeData(String key) {
+        for (DataHelper d : ((Map<String, DataHelper>) IndexHelper.kv.get(key)).values()) {
+            store.remove(d);
+        }
     }
 }

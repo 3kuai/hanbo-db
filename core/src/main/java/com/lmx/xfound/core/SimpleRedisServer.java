@@ -1,6 +1,8 @@
 package com.lmx.xfound.core;
 
 import com.lmx.xfound.core.datastruct.*;
+import com.lmx.xfound.storage.DataHelper;
+import com.lmx.xfound.storage.IndexHelper;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import redis.netty4.*;
@@ -16,6 +18,7 @@ import static redis.netty4.BulkReply.NIL_REPLY;
 import static redis.netty4.IntegerReply.integer;
 import static redis.netty4.StatusReply.OK;
 import static redis.netty4.StatusReply.QUIT;
+import static redis.netty4.StatusReply.WRONG_TYPE;
 import static redis.util.Encoding.bytesToNum;
 import static redis.util.Encoding.numToBytes;
 
@@ -665,8 +668,7 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public StatusReply set(byte[] key0, byte[] value1) throws RedisException {
-        kv.write(new String(key0) + ":" + new String(value1));
-        return OK;
+        return kv.write(new String(key0), new String(value1)) ? OK : WRONG_TYPE;
     }
 
     /**
@@ -1244,11 +1246,14 @@ public class SimpleRedisServer implements RedisServer {
      * @return IntegerReply
      */
     @Override
-    public IntegerReply lpush(byte[] key0, byte[][] value1) throws RedisException {
+    public Reply lpush(byte[] key0, byte[][] value1) throws RedisException {
+        int size = 0;
         for (byte[] value : value1) {
-            list.write(new String(key0) + ":" + new String(value));
+            if (!list.write(new String(key0), new String(value)))
+                return WRONG_TYPE;
+            size++;
         }
-        return integer(1);
+        return integer(size);
     }
 
     /**
@@ -1436,10 +1441,12 @@ public class SimpleRedisServer implements RedisServer {
      * @return IntegerReply
      */
     @Override
-    public IntegerReply rpush(byte[] key0, byte[][] value1) throws RedisException {
+    public Reply rpush(byte[] key0, byte[][] value1) throws RedisException {
         int size = 0;
-        for (byte[] v : value1) {
-            size += list.write(new String(key0) + ":" + new String(v));
+        for (byte[] value : value1) {
+            if (!list.write(new String(key0), new String(value)))
+                return WRONG_TYPE;
+            size++;
         }
         return integer(size);
     }
@@ -1474,11 +1481,8 @@ public class SimpleRedisServer implements RedisServer {
     public IntegerReply del(byte[][] key0) throws RedisException {
         int total = 0;
         for (byte[] bytes : key0) {
-            Object remove = data.remove(bytes);
-            if (remove != null) {
-                total++;
-            }
-            expires.remove(bytes);
+            kv.remove(new String(bytes));
+            total++;
         }
         return integer(total);
     }
@@ -1559,19 +1563,19 @@ public class SimpleRedisServer implements RedisServer {
             throw new RedisException("wrong number of arguments for KEYS");
         }
         List<Reply<ByteBuf>> replies = new ArrayList<Reply<ByteBuf>>();
-        Iterator<Object> it = data.keySet().iterator();
+        Iterator<String> it = IndexHelper.kv.keySet().iterator();
         while (it.hasNext()) {
-            BytesKey key = (BytesKey) it.next();
+            String key = (String) it.next();
             byte[] bytes = key.getBytes();
             boolean expired = false;
-            Long l = expires.get(key);
-            if (l != null) {
-                if (l < now()) {
-                    expired = true;
-                    it.remove();
-                }
-            }
-            if (matches(bytes, pattern0, 0, 0) && !expired) {
+//            Long l = expires.get(key);
+//            if (l != null) {
+//                if (l < now()) {
+//                    expired = true;
+//                    it.remove();
+//                }
+//            }
+            if (matches(bytes, pattern0, 0, 0) /*&& !expired*/) {
                 replies.add(new BulkReply(bytes));
             }
         }
@@ -1856,10 +1860,10 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public StatusReply type(byte[] key0) throws RedisException {
-        Object o = _get(key0);
+        Object o = IndexHelper.kv.get(new String(key0));
         if (o == null) {
             return new StatusReply("none");
-        } else if (o instanceof byte[]) {
+        } else if (o instanceof DataHelper) {
             return new StatusReply("string");
         } else if (o instanceof Map) {
             return new StatusReply("hash");
@@ -2179,9 +2183,8 @@ public class SimpleRedisServer implements RedisServer {
      * @return IntegerReply
      */
     @Override
-    public IntegerReply hset(byte[] key0, byte[] field1, byte[] value2) throws RedisException {
-        hash.write(new String(key0), new String(field1) + ":" + new String(value2));
-        return integer(1);
+    public Reply hset(byte[] key0, byte[] field1, byte[] value2) throws RedisException {
+        return hash.write(new String(key0), new String(field1), new String(value2)) ? integer(1) : WRONG_TYPE;
     }
 
     /**

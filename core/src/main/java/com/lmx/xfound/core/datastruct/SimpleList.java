@@ -10,6 +10,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 基于内存读写key value操作,数据可持久,零延迟
@@ -17,7 +18,7 @@ import java.util.List;
  */
 @Component
 @Slf4j
-public class SimpleList {
+public class SimpleList extends BaseOP {
     DataMedia store;
     IndexHelper ih;
 
@@ -47,19 +48,23 @@ public class SimpleList {
         }
     }
 
-    public int write(String request) {
+    public boolean write(String key, String value) {
         try {
-            ByteBuffer b = ByteBuffer.allocateDirect(128);
-            int length = request.getBytes().length;
-            b.putInt(length);
-            b.put(request.getBytes("utf8"));
-            b.flip();
-            DataHelper dh = store.addList(b);
-            return ih.add(dh);
+            if (super.write(key, value)) {
+                ByteBuffer b = ByteBuffer.allocateDirect(128);
+                String request = key + ":" + value;
+                int length = request.getBytes().length;
+                b.putInt(length);
+                b.put(request.getBytes("utf8"));
+                b.flip();
+                DataHelper dh = store.addList(b);
+                ih.add(dh);
+                return true;
+            }
         } catch (Exception e) {
             log.error("write list data error", e);
         }
-        return -1;
+        return false;
     }
 
     public List<byte[]> read(String request, int startIdx, int endIdx) {
@@ -77,5 +82,17 @@ public class SimpleList {
             log.error("read list data error", e);
         }
         return null;
+    }
+
+    @Override
+    public boolean checkKeyType(String key) {
+        return isExist(key) ? IndexHelper.type(key) instanceof List : true;
+    }
+
+    @Override
+    public void removeData(String key) {
+        for (DataHelper d : (List<DataHelper>) IndexHelper.kv.get(key)) {
+            store.remove(d);
+        }
     }
 }

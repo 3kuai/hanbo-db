@@ -22,7 +22,11 @@ public abstract class IndexHelper extends BaseMedia {
         super(fileName, size);
     }
 
-    public static boolean existKey(String key) {
+    public static Object type(String key) {
+        return kv.get(key);
+    }
+
+    public static boolean exist(String key) {
         return kv.containsKey(key);
     }
 
@@ -57,7 +61,7 @@ public abstract class IndexHelper extends BaseMedia {
         buffer.position(0);
         buffer.putInt(curPos);//head 4 byte in last postion
         buffer.rewind();
-        if (dh.getType().equals("kv") && !kv.containsKey(key)) {
+        if (dh.getType().equals("kv")/* && !kv.containsKey(key)*/) {
             kv.put(key, dh);
         } else if (dh.getType().equals("list")) {
             if (!kv.containsKey(key)) {
