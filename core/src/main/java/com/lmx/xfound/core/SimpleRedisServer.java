@@ -8,6 +8,7 @@ import io.netty.channel.ChannelHandlerContext;
 import redis.netty4.*;
 import redis.util.*;
 
+import javax.xml.crypto.Data;
 import java.lang.reflect.Field;
 import java.security.SecureRandom;
 import java.util.*;
@@ -1481,7 +1482,13 @@ public class SimpleRedisServer implements RedisServer {
     public IntegerReply del(byte[][] key0) throws RedisException {
         int total = 0;
         for (byte[] bytes : key0) {
-            kv.remove(new String(bytes));
+            String key = new String(bytes);
+            if (IndexHelper.type(key) instanceof DataHelper)
+                kv.remove(key);
+            if (IndexHelper.type(key) instanceof List)
+                list.remove(key);
+            if (IndexHelper.type(key) instanceof Map)
+                hash.remove(key);
             total++;
         }
         return integer(total);
@@ -1860,7 +1867,7 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public StatusReply type(byte[] key0) throws RedisException {
-        Object o = IndexHelper.kv.get(new String(key0));
+        Object o = IndexHelper.type(new String(key0));
         if (o == null) {
             return new StatusReply("none");
         } else if (o instanceof DataHelper) {

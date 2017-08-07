@@ -74,7 +74,7 @@ public class SimpleHash extends BaseOP {
         try {
             List<String> resp = new ArrayList<>();
             long start = System.currentTimeMillis();
-            for (Map.Entry<String, DataHelper> e : ((Map<String, DataHelper>) ih.kv.get(hash)).entrySet()) {
+            for (Map.Entry<String, DataHelper> e : ((Map<String, DataHelper>) IndexHelper.type(hash)).entrySet()) {
                 if (e.getKey().equals(field))
                     return store.get(e.getValue());
             }
@@ -87,11 +87,11 @@ public class SimpleHash extends BaseOP {
 
     public byte[][] read(String hash) {
         try {
-            byte[][] data = new byte[((Map) ih.kv.get(hash)).size() * 2][];
+            byte[][] data = new byte[((Map) IndexHelper.type(hash)).size() * 2][];
             List<String> resp = new ArrayList<>();
             long start = System.currentTimeMillis();
             int i = 0;
-            for (Map.Entry<String, DataHelper> e : ((Map<String, DataHelper>) ih.kv.get(hash)).entrySet()) {
+            for (Map.Entry<String, DataHelper> e : ((Map<String, DataHelper>) IndexHelper.type(hash)).entrySet()) {
                 data[i++] = e.getKey().getBytes();
                 data[i++] = store.get(e.getValue());
             }
@@ -110,7 +110,7 @@ public class SimpleHash extends BaseOP {
 
     @Override
     public void removeData(String key) {
-        for (DataHelper d : ((Map<String, DataHelper>) IndexHelper.kv.get(key)).values()) {
+        for (DataHelper d : ((Map<String, DataHelper>) IndexHelper.type(key)).values()) {
             store.remove(d);
         }
     }

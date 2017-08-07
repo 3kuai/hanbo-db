@@ -30,6 +30,10 @@ public abstract class IndexHelper extends BaseMedia {
         return kv.containsKey(key);
     }
 
+    public static void remove(String key) {
+        kv.remove(key);
+    }
+
     public int add(DataHelper dh) throws Exception {
         if (dh == null) return -1;
         int indexPos = 0;

@@ -91,7 +91,7 @@ public class SimpleList extends BaseOP {
 
     @Override
     public void removeData(String key) {
-        for (DataHelper d : (List<DataHelper>) IndexHelper.kv.get(key)) {
+        for (DataHelper d : (List<DataHelper>) IndexHelper.type(key)) {
             store.remove(d);
         }
     }

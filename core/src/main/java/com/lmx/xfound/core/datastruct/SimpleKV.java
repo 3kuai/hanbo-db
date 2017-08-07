@@ -68,7 +68,7 @@ public class SimpleKV extends BaseOP {
     public byte[] read(String request) {
         try {
             long start = System.currentTimeMillis();
-            byte[] data = store.get((DataHelper) ih.kv.get(request));
+            byte[] data = store.get((DataHelper) IndexHelper.type(request));
             String resp = new String(data, Charsets.UTF_8);
             log.debug("key={},value={} cost={}ms", request, resp, (System.currentTimeMillis() - start));
             return data;
@@ -85,6 +85,6 @@ public class SimpleKV extends BaseOP {
 
     @Override
     public void removeData(String key) {
-        store.remove((DataHelper) IndexHelper.kv.get(key));
+        store.remove((DataHelper) IndexHelper.type(key));
     }
 }
