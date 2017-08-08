@@ -1,2 +1,2 @@
-# xfound
+# jredis
 redis of java implemention

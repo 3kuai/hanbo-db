@@ -1,13 +1,14 @@
-package com.lmx.xfound.transport;
+package com.lmx.jredis.transport;
 
-import com.lmx.xfound.core.datastruct.*;
-import com.lmx.xfound.core.*;
+import com.lmx.jredis.core.datastruct.*;
+import com.lmx.jredis.core.*;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
@@ -25,10 +26,9 @@ import javax.annotation.PreDestroy;
 
 @Component
 @Order(value = 1)
+@Slf4j
 public class NettyServer implements ApplicationContextAware {
 
-    static final Logger logger = LoggerFactory.getLogger(NettyServer.class);
-    Channel channel;
     EventLoopGroup bossGroup;
     EventLoopGroup workerGroup;
 
@@ -56,7 +56,7 @@ public class NettyServer implements ApplicationContextAware {
 
     @PostConstruct
     public void start() throws InterruptedException {
-        logger.info("begin to start xfound server..");
+        log.info("begin to start jredis server...");
         bossGroup = new NioEventLoopGroup();
         workerGroup = new NioEventLoopGroup(ioThreadNum);
         final RedisServer redis = new SimpleRedisServer();
@@ -80,13 +80,13 @@ public class NettyServer implements ApplicationContextAware {
                 });
         // Start the server.
         serverBootstrap.bind(host, port).sync();
-        logger.info("xfound server listening on port {}", port);
+        log.info("jredis server listening on port {}", port);
     }
 
 
     @PreDestroy
     public void stop() {
-        logger.info("destroy server resources");
+        log.info("destroy server resources");
         bossGroup.shutdownGracefully();
         workerGroup.shutdownGracefully();
     }

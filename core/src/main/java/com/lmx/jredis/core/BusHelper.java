@@ -1,4 +1,4 @@
-package com.lmx.xfound.core;
+package com.lmx.jredis.core;
 
 import io.netty.channel.ChannelHandlerContext;
 import lombok.AllArgsConstructor;

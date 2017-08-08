@@ -1,14 +1,13 @@
-package com.lmx.xfound.core;
+package com.lmx.jredis.core;
 
-import com.lmx.xfound.core.datastruct.*;
-import com.lmx.xfound.storage.DataHelper;
-import com.lmx.xfound.storage.IndexHelper;
+import com.lmx.jredis.core.datastruct.*;
+import com.lmx.jredis.storage.DataHelper;
+import com.lmx.jredis.storage.IndexHelper;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import redis.netty4.*;
 import redis.util.*;
 
-import javax.xml.crypto.Data;
 import java.lang.reflect.Field;
 import java.security.SecureRandom;
 import java.util.*;
@@ -1529,13 +1528,18 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public IntegerReply expire(byte[] key0, byte[] seconds1) throws RedisException {
-        Object o = _get(key0);
-        if (o == null) {
-            return integer(0);
-        } else {
-            expires.put(key0, bytesToNum(seconds1) * 1000 + now());
+//        Object o = _get(key0);
+//        if (o == null) {
+//            return integer(0);
+//        } else {
+//            expires.put(key0, bytesToNum(seconds1) * 1000 + now());
+//            return integer(1);
+//        }
+        if (IndexHelper.type(new String(key0)) != null) {
+            IndexHelper.setExpire(new String(key0), bytesToNum(seconds1) * 1000);
             return integer(1);
-        }
+        } else
+            return integer(0);
     }
 
     /**

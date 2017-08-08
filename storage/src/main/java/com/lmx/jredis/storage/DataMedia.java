@@ -1,9 +1,9 @@
-package com.lmx.xfound.storage;
+package com.lmx.jredis.storage;
 
 import java.nio.ByteBuffer;
 
 /**
- * 数据存储区
+ * 数据(value)存储区
  * 格式：头四位放最新值的postion,其次是数据长度和数据内容
  * Created by lmx on 2017/4/13.
  */

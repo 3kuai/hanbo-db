@@ -1,4 +1,4 @@
-package com.lmx.xfound.storage;
+package com.lmx.jredis.storage;
 
 import lombok.Data;
 
@@ -11,6 +11,7 @@ public class DataHelper {
     String key;
     String hash;
     int pos;
+    int selfPos;
     int length;
     long expire;
 }

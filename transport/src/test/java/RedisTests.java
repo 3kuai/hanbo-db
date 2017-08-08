@@ -1,4 +1,4 @@
-import com.lmx.xfound.transport.MainApplication;
+import com.lmx.jredis.transport.MainApplication;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.Test;
 import org.junit.runner.RunWith;

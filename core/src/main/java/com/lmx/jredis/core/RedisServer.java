@@ -1,6 +1,6 @@
-package com.lmx.xfound.core;
+package com.lmx.jredis.core;
 
-import com.lmx.xfound.core.datastruct.*;
+import com.lmx.jredis.core.datastruct.*;
 import io.netty.channel.ChannelHandlerContext;
 import redis.netty4.*;
 

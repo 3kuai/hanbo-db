@@ -1,15 +1,14 @@
-package com.lmx.xfound.transport;
+package com.lmx.jredis.transport;
 
 import com.google.common.base.Charsets;
-import com.lmx.xfound.core.BusHelper;
-import com.lmx.xfound.core.RedisException;
-import com.lmx.xfound.core.RedisServer;
+import com.lmx.jredis.core.BusHelper;
+import com.lmx.jredis.core.RedisException;
+import com.lmx.jredis.core.RedisServer;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.stereotype.Component;
 import redis.netty4.Command;
 import redis.netty4.ErrorReply;

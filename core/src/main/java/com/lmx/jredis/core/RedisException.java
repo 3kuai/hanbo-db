@@ -1,4 +1,4 @@
-package com.lmx.xfound.core;
+package com.lmx.jredis.core;
 
 /**
  * Server exception

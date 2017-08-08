@@ -1,4 +1,4 @@
-package com.lmx.xfound.storage;
+package com.lmx.jredis.storage;
 
 import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
@@ -7,7 +7,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 索引存储区
+ * 索引(key)存储区
  * 格式：头四位放最新值的postion,其次是数据长度和数据内容
  * Created by lmx on 2017/4/14.
  */
@@ -15,8 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @EqualsAndHashCode(callSuper = false)
 public abstract class IndexHelper extends BaseMedia {
     public static Map<String, Object> kv = new ConcurrentHashMap<>();
-//    public static Map<String, List<DataHelper>> list = new ConcurrentHashMap<>();
-//    public static Map<String, Map<String, DataHelper>> hash = new ConcurrentHashMap<>();
+    public static Map<String, Long> expire = new ConcurrentHashMap<>();
 
     public IndexHelper(String fileName, int size) throws Exception {
         super(fileName, size);
@@ -24,6 +23,21 @@ public abstract class IndexHelper extends BaseMedia {
 
     public static Object type(String key) {
         return kv.get(key);
+    }
+
+    public static void setExpire(String key, long timeOut) {
+        expire.put(key, timeOut + System.currentTimeMillis());
+    }
+
+    public static long getExpire(String key) {
+        if (expire.containsKey(key))
+            return expire.get(key);
+        else
+            return 0L;
+    }
+
+    public static long rmExpire(String key) {
+        return expire.remove(key);
     }
 
     public static boolean exist(String key) {
@@ -44,6 +58,7 @@ public abstract class IndexHelper extends BaseMedia {
         String key = dh.key;
         byte[] keyBytes = key.getBytes(CHARSET);
         int pos = dh.pos;
+
         buffer.putInt(keyBytes.length);
         buffer.put(keyBytes);
 
@@ -51,19 +66,22 @@ public abstract class IndexHelper extends BaseMedia {
         byte[] typeBytes = type.getBytes(CHARSET);
         buffer.putInt(typeBytes.length);
         buffer.put(typeBytes);
-
+        byte[] hb = null;
         if (type.equals("hash")) {
             String h = dh.hash;
-            byte[] hb = h.getBytes(CHARSET);
+            hb = h.getBytes(CHARSET);
             buffer.putInt(hb.length);
             buffer.put(hb);
         }
         buffer.putInt(pos);
         buffer.putInt(dh.length);
+        buffer.putLong(dh.expire);
+        buffer.putChar(NORMAL);
 
         int curPos = buffer.position();
         buffer.position(0);
         buffer.putInt(curPos);//head 4 byte in last postion
+        dh.selfPos = curPos - 2;
         buffer.rewind();
         if (dh.getType().equals("kv")/* && !kv.containsKey(key)*/) {
             kv.put(key, dh);
@@ -83,6 +101,11 @@ public abstract class IndexHelper extends BaseMedia {
         return 0;
     }
 
+    public void remove(DataHelper dh) {
+        buffer.position(dh.selfPos);
+        buffer.putChar(DELETE);
+        buffer.rewind();
+    }
 
     public void recoverIndex() throws Exception {
         boolean first = true;
@@ -113,13 +136,18 @@ public abstract class IndexHelper extends BaseMedia {
             }
             int dataIndex = buffer.getInt();
             int dataLength = buffer.getInt();
+            long expire = buffer.getLong();
+            char status = buffer.getChar();
             DataHelper dh = new DataHelper();
             dh.key = key;
             dh.pos = dataIndex;
             dh.length = dataLength;
             dh.type = type;
             dh.hash = hash_;
-            wrapData(dh);
+            dh.expire = expire;
+            dh.selfPos = buffer.position() - 2;
+            if (status == NORMAL)
+                wrapData(dh);
         }
     }
 

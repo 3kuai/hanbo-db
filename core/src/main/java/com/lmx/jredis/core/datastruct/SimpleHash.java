@@ -1,6 +1,6 @@
-package com.lmx.xfound.core.datastruct;
+package com.lmx.jredis.core.datastruct;
 
-import com.lmx.xfound.storage.*;
+import com.lmx.jredis.storage.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -35,6 +35,7 @@ public class SimpleHash extends BaseOP {
                     if (dataHelper.getType().equals("hash")) {
                         if (!kv.containsKey(dataHelper.getHash())) {
                             kv.put(dataHelper.getHash(), new HashMap<String, DataHelper>());
+                            expire.put(dataHelper.getKey(), dataHelper.getExpire());
                             hashSize++;
                         }
                         ((Map) kv.get(dataHelper.getHash())).put(dataHelper.getKey(), dataHelper);
@@ -72,6 +73,9 @@ public class SimpleHash extends BaseOP {
 
     public byte[] read(String hash, String field) {
         try {
+            if (super.isExpire(hash)) {
+                return null;
+            }
             List<String> resp = new ArrayList<>();
             long start = System.currentTimeMillis();
             for (Map.Entry<String, DataHelper> e : ((Map<String, DataHelper>) IndexHelper.type(hash)).entrySet()) {
@@ -87,6 +91,9 @@ public class SimpleHash extends BaseOP {
 
     public byte[][] read(String hash) {
         try {
+            if (super.isExpire(hash)) {
+                return null;
+            }
             byte[][] data = new byte[((Map) IndexHelper.type(hash)).size() * 2][];
             List<String> resp = new ArrayList<>();
             long start = System.currentTimeMillis();
@@ -111,6 +118,7 @@ public class SimpleHash extends BaseOP {
     @Override
     public void removeData(String key) {
         for (DataHelper d : ((Map<String, DataHelper>) IndexHelper.type(key)).values()) {
+            ih.remove(d);
             store.remove(d);
         }
     }

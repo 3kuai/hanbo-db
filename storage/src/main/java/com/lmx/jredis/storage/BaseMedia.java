@@ -1,4 +1,4 @@
-package com.lmx.xfound.storage;
+package com.lmx.jredis.storage;
 
 import java.io.File;
 import java.io.RandomAccessFile;

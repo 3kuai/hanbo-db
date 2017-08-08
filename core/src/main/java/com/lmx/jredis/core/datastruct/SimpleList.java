@@ -1,6 +1,6 @@
-package com.lmx.xfound.core.datastruct;
+package com.lmx.jredis.core.datastruct;
 
-import com.lmx.xfound.storage.*;
+import com.lmx.jredis.storage.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -35,6 +35,7 @@ public class SimpleList extends BaseOP {
                     if (dataHelper.getType().equals("list")) {
                         if (!kv.containsKey(dataHelper.getKey())) {
                             kv.put(dataHelper.getKey(), new LinkedList<DataHelper>());
+                            expire.put(dataHelper.getKey(), dataHelper.getExpire());
                             listSize++;
                         }
                         ((List) kv.get(dataHelper.getKey())).add(dataHelper);
@@ -67,16 +68,19 @@ public class SimpleList extends BaseOP {
         return false;
     }
 
-    public List<byte[]> read(String request, int startIdx, int endIdx) {
+    public List<byte[]> read(String key, int startIdx, int endIdx) {
         try {
+            if (super.isExpire(key)) {
+                return null;
+            }
             List<byte[]> resp = new ArrayList<>();
             long start = System.currentTimeMillis();
-            for (Object l : (List) (ih.kv).get(request)) {
+            for (Object l : (List) (ih.kv).get(key)) {
                 if (l instanceof DataHelper)
                     resp.add(store.get((DataHelper) l));
             }
             resp = resp.subList(startIdx, endIdx == -1 ? resp.size() : endIdx);
-            log.debug("key={},value={} cost={}ms", request, resp, (System.currentTimeMillis() - start));
+            log.debug("key={},value={} cost={}ms", key, resp, (System.currentTimeMillis() - start));
             return resp;
         } catch (Exception e) {
             log.error("read list data error", e);
@@ -92,6 +96,7 @@ public class SimpleList extends BaseOP {
     @Override
     public void removeData(String key) {
         for (DataHelper d : (List<DataHelper>) IndexHelper.type(key)) {
+            ih.remove(d);
             store.remove(d);
         }
     }
