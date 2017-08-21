@@ -10,8 +10,8 @@ public class DataHelper {
     String type = "kv";
     String key;
     String hash;
-    int pos;
-    int selfPos;
-    int length;
-    long expire;
+    int pos;//value position
+    int selfPos;//key position
+    int length;//value bytes length
+    long expire;//timeout
 }

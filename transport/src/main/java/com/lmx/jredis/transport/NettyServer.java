@@ -1,21 +1,22 @@
 package com.lmx.jredis.transport;
 
-import com.lmx.jredis.core.datastruct.*;
-import com.lmx.jredis.core.*;
+import com.lmx.jredis.core.BusHelper;
+import com.lmx.jredis.core.RedisServer;
+import com.lmx.jredis.core.SimpleRedisServer;
+import com.lmx.jredis.core.datastruct.SimpleHash;
+import com.lmx.jredis.core.datastruct.SimpleKV;
+import com.lmx.jredis.core.datastruct.SimpleList;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.*;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.ChannelPipeline;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import redis.RedisCommandDecoder;
@@ -27,10 +28,7 @@ import javax.annotation.PreDestroy;
 @Component
 @Order(value = 1)
 @Slf4j
-public class NettyServer implements ApplicationContextAware {
-
-    EventLoopGroup bossGroup;
-    EventLoopGroup workerGroup;
+public class NettyServer {
 
     @Value("${rpcServer.host:0.0.0.0}")
     String host;
@@ -43,6 +41,9 @@ public class NettyServer implements ApplicationContextAware {
 
     @Value("${rpcServer.port:16990}")
     int port;
+    EventLoopGroup bossGroup;
+    EventLoopGroup workerGroup;
+
     @Autowired
     SimpleKV simpleKV;
     @Autowired
@@ -56,15 +57,14 @@ public class NettyServer implements ApplicationContextAware {
 
     @PostConstruct
     public void start() throws InterruptedException {
-        log.info("begin to start jredis server...");
-        bossGroup = new NioEventLoopGroup();
+        log.info("start jredis server...");
+        bossGroup = new NioEventLoopGroup(ioThreadNum * 2);
         workerGroup = new NioEventLoopGroup(ioThreadNum);
         final RedisServer redis = new SimpleRedisServer();
         nettyServerHandler.init(redis);
         redis.initStore(simpleKV, sl, sh, busHelper);
         ServerBootstrap serverBootstrap = new ServerBootstrap();
-        final DefaultEventExecutorGroup group = new DefaultEventExecutorGroup(1);
-        serverBootstrap.group(new NioEventLoopGroup(), new NioEventLoopGroup())
+        serverBootstrap.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)
                 .option(ChannelOption.SO_BACKLOG, 100)
                 .localAddress(port)
@@ -75,7 +75,7 @@ public class NettyServer implements ApplicationContextAware {
                         ChannelPipeline p = ch.pipeline();
                         p.addLast(new RedisCommandDecoder());
                         p.addLast(new RedisReplyEncoder());
-                        p.addLast(group, nettyServerHandler);
+                        p.addLast(nettyServerHandler);
                     }
                 });
         // Start the server.
@@ -89,8 +89,5 @@ public class NettyServer implements ApplicationContextAware {
         log.info("destroy server resources");
         bossGroup.shutdownGracefully();
         workerGroup.shutdownGracefully();
-    }
-
-    public void setApplicationContext(ApplicationContext ctx) throws BeansException {
     }
 }

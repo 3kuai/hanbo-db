@@ -40,22 +40,22 @@ public class RedisTests {
 
     @Test
     public void test() throws Exception {
-        for (int i = 1000; i < 2000; ++i) {
+        for (int i = 0; i < 100; ++i) {
             es.execute(new Runnable() {
                 @Override
                 public void run() {
                     int i = count.incrementAndGet();
-//                    template.opsForValue().set("aa" + i, "b" + i);
+                    //template.opsForValue().set("aa" + i, "b" + i);
                     log.info("k=aa" + i + ",v=" + template.opsForValue().get("aa" + i));
-//                    template.opsForList().leftPushAll("list" + i, "1", "2", "3");
-                    log.info("list=" + template.opsForList().range("list", 0, -1));
-//                    template.opsForHash().put("user200" + i, "age", "25");
-//                    template.opsForHash().put("user200" + i, "sex", "男");
+                    //template.opsForList().leftPushAll("list" + i, "1", "2", "3");
+                    log.info("list=" + template.opsForList().range("list" + i, 0, -1));
+                    //template.opsForHash().put("user200" + i, "age", "25");
+                    //template.opsForHash().put("user200" + i, "sex", "男");
                     log.info("hv=" + template.opsForHash().get("user200" + i, "age"));
                 }
             });
         }
-        es.awaitTermination(5, TimeUnit.SECONDS);
+        es.awaitTermination(10, TimeUnit.SECONDS);
     }
 
 }
