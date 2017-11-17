@@ -120,4 +120,18 @@ public class DataMedia extends BaseMedia {
         buffer.putChar(DELETE);
         buffer.rewind();
     }
+
+    public DataHelper update(DataHelper dh, byte[] newBuf) {
+        buffer.position(dh.pos - 4);
+        int length = newBuf.length;
+        if (length > maxUnit)
+            throw new RuntimeException("exceed max storage limited exception");
+        else {
+            buffer.putInt(length);
+            buffer.put(newBuf);
+            dh.length = length;
+            buffer.rewind();
+            return dh;
+        }
+    }
 }

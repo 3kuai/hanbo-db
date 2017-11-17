@@ -18,11 +18,12 @@ public class BaseMedia {
     FileChannel fileChannel;
     static File file;
     File f;
-    static String BASE_DIR = "data";
+    final static String BASE_DIR = "data";
     final static String CHARSET = "UTF-8";
     final static String SPLITTER = ":";
     final char NORMAL = '1';
     final char DELETE = '0';
+    int maxUnit = 1024;
 
     static {
         file = new File(BASE_DIR);

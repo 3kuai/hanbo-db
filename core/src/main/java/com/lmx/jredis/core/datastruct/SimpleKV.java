@@ -50,15 +50,22 @@ public class SimpleKV extends BaseOP {
     public boolean write(String key, String value) {
         try {
             if (super.write(key, value)) {
-                ByteBuffer b = ByteBuffer.allocateDirect(128);
-                String request = key + ":" + value;
-                int length = request.getBytes().length;
-                b.putInt(length);
-                b.put(request.getBytes(Charsets.UTF_8));
-                b.flip();
-                DataHelper dh = store.add(b);
-                ih.add(dh);
-                return true;
+                DataHelper dataHelper = (DataHelper) IndexHelper.type(key);
+                if (dataHelper != null) {
+                    dataHelper = store.update(dataHelper, value.getBytes(Charsets.UTF_8));
+                    ih.updateIndex(dataHelper);
+                    return true;
+                } else {
+                    ByteBuffer b = ByteBuffer.allocateDirect(128);
+                    String request = key + ":" + value;
+                    int length = request.getBytes().length;
+                    b.putInt(length);
+                    b.put(request.getBytes(Charsets.UTF_8));
+                    b.flip();
+                    DataHelper dh = store.add(b);
+                    ih.add(dh);
+                    return true;
+                }
             }
         } catch (Exception e) {
             log.error("write data error", e);

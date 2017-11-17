@@ -49,7 +49,8 @@ public abstract class IndexHelper extends BaseMedia {
     }
 
     public int add(DataHelper dh) throws Exception {
-        if (dh == null) return -1;
+        if (dh == null)
+            return -1;
         int indexPos = 0;
         if ((indexPos = buffer.getInt()) != 0)
             buffer.position(indexPos);
@@ -99,6 +100,11 @@ public abstract class IndexHelper extends BaseMedia {
             return ((Map) kv.get(dh.getHash())).size();
         }
         return 0;
+    }
+
+    public void updateIndex(DataHelper dh) {
+        buffer.position(dh.selfPos - 8 - 4);
+        buffer.putInt(dh.length);
     }
 
     public void remove(DataHelper dh) {

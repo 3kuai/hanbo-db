@@ -31,7 +31,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<Command> {
 
     @Autowired
     BusHelper busHelper;
-    private Map<BytesKey, Wrapper> methods = new HashMap<BytesKey, Wrapper>();
+    private Map<BytesKey, Wrapper> methods = new HashMap();
 
     interface Wrapper {
         Reply execute(Command command, ChannelHandlerContext ch) throws RedisException;
@@ -72,11 +72,6 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<Command> {
 
     private static final byte LOWER_DIFF = 'a' - 'A';
 
-//    @Override
-//    public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
-//        ctx.flush();
-//    }
-
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, Command msg) throws Exception {
         byte[] name = msg.getName();
@@ -112,8 +107,8 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<Command> {
     }
 
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        //log.error("", cause);
-        ctx.close();
+        log.error("", cause);
         busHelper.unSubscriber(ctx);
+        ctx.close();
     }
 }

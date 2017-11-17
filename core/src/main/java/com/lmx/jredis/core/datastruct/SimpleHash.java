@@ -1,16 +1,17 @@
 package com.lmx.jredis.core.datastruct;
 
+import com.google.common.base.Charsets;
+import com.google.common.collect.Collections2;
+import com.google.common.collect.Maps;
 import com.lmx.jredis.storage.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
 
 import javax.annotation.PostConstruct;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * 基于内存读写key value操作,数据可持久,零延迟
@@ -49,14 +50,23 @@ public class SimpleHash extends BaseOP {
         }
     }
 
-    public boolean write(String hash, String key, String value) {
+    public boolean write(String hash, String field, String value) {
         try {
-            if (super.write(key, value)) {
+            if (super.write(field, value)) {
+                Map<String, DataHelper> map = ((Map<String, DataHelper>) IndexHelper.type(hash));
+                if (!CollectionUtils.isEmpty(map)) {
+                    for (Map.Entry<String, DataHelper> e : map.entrySet()) {
+                        if (e.getKey().equals(field)) {
+                            store.update(e.getValue(), value.getBytes(Charsets.UTF_8));
+                            ih.updateIndex(e.getValue());
+                        }
+                    }
+                }
                 ByteBuffer b = ByteBuffer.allocateDirect(128);
                 int hashL = hash.getBytes().length;
                 b.putInt(hashL);
                 b.put(hash.getBytes("utf8"));
-                String request = key + ":" + value;
+                String request = field + ":" + value;
                 int length = request.getBytes().length;
                 b.putInt(length);
                 b.put(request.getBytes("utf8"));

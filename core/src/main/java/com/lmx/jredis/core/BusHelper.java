@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import redis.netty4.BulkReply;
+import redis.util.BytesKey;
 
 import javax.annotation.PostConstruct;
 import java.util.ArrayList;
@@ -25,7 +26,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 @Slf4j
 @Component
 public class BusHelper {
-    Map<String, ConcurrentHashMap<ChannelHandlerContext, String>> subscribers = new ConcurrentHashMap<>();
+    Map<BytesKey, ConcurrentHashMap<ChannelHandlerContext, BytesKey>> subscribers = new ConcurrentHashMap<>();
     BlockingQueue<Message> messages = new LinkedBlockingQueue<>();
 
     @Data
@@ -42,16 +43,16 @@ public class BusHelper {
 
     public void regSubscriber(ChannelHandlerContext channel, byte[]... topic) {
         for (byte[] t : topic) {
-            if (!subscribers.containsKey(new String(t))) {
-                subscribers.put(new String(t), new ConcurrentHashMap<ChannelHandlerContext, String>());
+            if (!subscribers.containsKey(new BytesKey(t))) {
+                subscribers.put(new BytesKey(t), new ConcurrentHashMap<ChannelHandlerContext, BytesKey>());
             }
-            subscribers.get(new String(t)).put(channel, "");
+            subscribers.get(new BytesKey(t)).put(channel, new BytesKey("".getBytes()));
             log.info("register subscriber {}", channel.channel().toString());
         }
     }
 
     public void unSubscriber(ChannelHandlerContext context) {
-        for (ConcurrentHashMap<ChannelHandlerContext, String> chcs : subscribers.values()) {
+        for (ConcurrentHashMap<ChannelHandlerContext, BytesKey> chcs : subscribers.values()) {
             if (chcs.containsKey(context)) {
                 log.info("unSubscriber channel {}", context);
                 chcs.remove(context);
@@ -71,7 +72,7 @@ public class BusHelper {
                 try {
                     Message me = messages.take();
                     byte[] topic = me.getTopic();
-                    ConcurrentHashMap<ChannelHandlerContext, String> chanList = subscribers.get(new String(topic));
+                    ConcurrentHashMap<ChannelHandlerContext, BytesKey> chanList = subscribers.get(new BytesKey(topic));
                     if (chanList == null)
                         continue;
                     for (ChannelHandlerContext chc : chanList.keySet()) {
