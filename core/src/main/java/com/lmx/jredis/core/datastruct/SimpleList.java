@@ -55,12 +55,14 @@ public class SimpleList extends BaseOP {
         try {
             if (super.write(key, value)) {
                 ByteBuffer b = ByteBuffer.allocateDirect(128);
-                String request = key + ":" + value;
-                int length = request.getBytes().length;
+                int length = value.getBytes().length;
                 b.putInt(length);
-                b.put(request.getBytes("utf8"));
+                b.put(value.getBytes("utf8"));
                 b.flip();
-                DataHelper dh = store.addList(b);
+                DataHelper dh = store.add(b);
+                dh.setType("list");
+                dh.setKey(key);
+                dh.setLength(length);
                 ih.add(dh);
                 return true;
             }

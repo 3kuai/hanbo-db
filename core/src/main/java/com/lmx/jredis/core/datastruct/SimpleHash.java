@@ -63,15 +63,15 @@ public class SimpleHash extends BaseOP {
                     }
                 }
                 ByteBuffer b = ByteBuffer.allocateDirect(128);
-                int hashL = hash.getBytes().length;
-                b.putInt(hashL);
-                b.put(hash.getBytes("utf8"));
-                String request = field + ":" + value;
-                int length = request.getBytes().length;
+                int length = value.getBytes().length;
                 b.putInt(length);
-                b.put(request.getBytes("utf8"));
+                b.put(value.getBytes("utf8"));
                 b.flip();
-                DataHelper dh = store.addHash(b);
+                DataHelper dh = store.add(b);
+                dh.setHash(hash);
+                dh.setType("hash");
+                dh.setKey(field);
+                dh.setLength(length);
                 ih.add(dh);
                 return true;
             }

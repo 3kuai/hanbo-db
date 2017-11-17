@@ -57,12 +57,13 @@ public class SimpleKV extends BaseOP {
                     return true;
                 } else {
                     ByteBuffer b = ByteBuffer.allocateDirect(128);
-                    String request = key + ":" + value;
-                    int length = request.getBytes().length;
+                    int length = value.getBytes().length;
                     b.putInt(length);
-                    b.put(request.getBytes(Charsets.UTF_8));
+                    b.put(value.getBytes(Charsets.UTF_8));
                     b.flip();
                     DataHelper dh = store.add(b);
+                    dh.setKey(key);
+                    dh.setLength(length);
                     ih.add(dh);
                     return true;
                 }
