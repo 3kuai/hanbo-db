@@ -1,9 +1,7 @@
 package com.lmx.jredis.core.datastruct;
 
 import com.google.common.base.Charsets;
-import com.lmx.jredis.storage.DataHelper;
-import com.lmx.jredis.storage.DataMedia;
-import com.lmx.jredis.storage.IndexHelper;
+import com.lmx.jredis.storage.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -28,8 +26,8 @@ public class SimpleKV extends BaseOP {
     @PostConstruct
     public void init() {
         try {
-            store = new DataMedia("valueData", storeSize);
-            ih = new IndexHelper("keyIndex", storeSize / 8) {
+            store = new DataMedia(0, "valueData", storeSize);
+            ih = new IndexHelper(0, "keyIndex", storeSize / 8) {
                 public void wrapData(DataHelper dataHelper) {
                     if (dataHelper.getType().equals("kv")) {
                         if (!kv.containsKey(dataHelper.getKey())) {
@@ -47,12 +45,14 @@ public class SimpleKV extends BaseOP {
         }
     }
 
-    public boolean write(String key, String value) {
+    public boolean write(int db, String key, String value) {
         try {
             if (super.write(key, value)) {
                 DataHelper dataHelper = (DataHelper) IndexHelper.type(key);
                 if (dataHelper != null) {
+                    store = (DataMedia) SimpleDatabase.DBS.get(db).get("valueData");
                     dataHelper = store.update(dataHelper, value.getBytes(Charsets.UTF_8));
+                    ih = (IndexHelper) SimpleDatabase.DBS.get(db).get("keyIndex");
                     ih.updateIndex(dataHelper);
                     return true;
                 } else {
@@ -61,9 +61,11 @@ public class SimpleKV extends BaseOP {
                     b.putInt(length);
                     b.put(value.getBytes(Charsets.UTF_8));
                     b.flip();
+                    store = (DataMedia) SimpleDatabase.DBS.get(db).get("valueData");
                     DataHelper dh = store.add(b);
                     dh.setKey(key);
                     dh.setLength(length);
+                    ih = (IndexHelper) SimpleDatabase.DBS.get(db).get("keyIndex");
                     ih.add(dh);
                     return true;
                 }
@@ -74,13 +76,15 @@ public class SimpleKV extends BaseOP {
         return false;
     }
 
-    public byte[] read(String key) {
+    public byte[] read(int db, String key) {
         try {
             if (super.isExpire(key)) {
                 return null;
             }
             long start = System.currentTimeMillis();
-            byte[] data = store.get((DataHelper) IndexHelper.type(key));
+            store = (DataMedia) SimpleDatabase.DBS.get(db).get("valueData");
+            ih = (IndexHelper) SimpleDatabase.DBS.get(db).get("keyIndex");
+            byte[] data = store.get((DataHelper) ih.type(key));
             String resp = new String(data, Charsets.UTF_8);
             log.debug("key={},value={} cost={}ms", key, resp, (System.currentTimeMillis() - start));
             return data;

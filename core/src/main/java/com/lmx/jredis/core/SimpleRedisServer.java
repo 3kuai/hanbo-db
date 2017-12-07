@@ -27,7 +27,9 @@ public class SimpleRedisServer implements RedisServer {
     SimpleKV kv;
     SimpleList list;
     SimpleHash hash;
+
     BusHelper bus;
+    int db = 0;
 
     public IntegerReply subscribe(byte[][] channel, ChannelHandlerContext chan) {
         bus.regSubscriber(chan, channel);
@@ -465,7 +467,7 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public BulkReply get(byte[] key0) throws RedisException {
-        Object o = kv.read(new String(key0));
+        Object o = kv.read(db, new String(key0));
         if (o instanceof byte[]) {
             return new BulkReply((byte[]) o);
         }
@@ -668,7 +670,7 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public StatusReply set(byte[] key0, byte[] value1) throws RedisException {
-        return kv.write(new String(key0), new String(value1)) ? OK : WRONG_TYPE;
+        return kv.write(db, new String(key0), new String(value1)) ? OK : WRONG_TYPE;
     }
 
     /**

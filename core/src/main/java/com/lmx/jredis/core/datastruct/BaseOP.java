@@ -35,4 +35,8 @@ public abstract class BaseOP {
     public boolean write(String key, String value) {
         return checkKeyType(key);
     }
+
+    public boolean write(int db, String key, String value) {
+        return checkKeyType(key);
+    }
 }

@@ -15,9 +15,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.*;
 
 /**
  * 基于topic路由
@@ -65,20 +63,27 @@ public class BusHelper {
         messages.add(m);
     }
 
+    ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 2);
+
     Thread t = new Thread(new Runnable() {
         @Override
         public void run() {
             while (true) {
                 try {
-                    Message me = messages.take();
+                    final Message me = messages.take();
                     byte[] topic = me.getTopic();
                     ConcurrentHashMap<ChannelHandlerContext, BytesKey> chanList = subscribers.get(new BytesKey(topic));
                     if (chanList == null)
                         continue;
-                    for (ChannelHandlerContext chc : chanList.keySet()) {
+                    for (final ChannelHandlerContext chc : chanList.keySet()) {
                         if (chc.channel().isOpen()) {
                             log.info("notify channel: {} ,msg: {}", chc.toString(), me.getMsg());
-                            chc.channel().writeAndFlush(new BulkReply(me.getMsg()));
+                            executorService.execute(new Runnable() {
+                                @Override
+                                public void run() {
+                                    chc.channel().writeAndFlush(new BulkReply(me.getMsg()));
+                                }
+                            });
                         } else {
                             chanList.remove(chc);
                         }

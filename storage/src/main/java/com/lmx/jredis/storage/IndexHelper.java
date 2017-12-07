@@ -21,6 +21,10 @@ public abstract class IndexHelper extends BaseMedia {
         super(fileName, size);
     }
 
+    public IndexHelper(int db, String fileName, int size) throws Exception {
+        super(db, fileName, size);
+    }
+
     public static Object type(String key) {
         return kv.get(key);
     }

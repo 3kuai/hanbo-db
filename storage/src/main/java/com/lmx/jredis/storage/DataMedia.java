@@ -4,13 +4,17 @@ import java.nio.ByteBuffer;
 
 /**
  * 数据(value)存储区
- * 格式：头四位放最新值的postion,其次是数据长度和数据内容
+ * 格式：头四位放最新值的position,其次是数据长度和数据内容
  * Created by lmx on 2017/4/13.
  */
 public class DataMedia extends BaseMedia {
 
     public DataMedia(String fileName, int size) throws Exception {
         super(fileName, size);
+    }
+
+    public DataMedia(int db, String fileName, int size) throws Exception {
+        super(db, fileName, size);
     }
 
     public DataHelper add(ByteBuffer b) throws Exception {

@@ -7,6 +7,8 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 存储单元
@@ -17,6 +19,7 @@ public class BaseMedia {
     int size = 1024 * 1024;
     FileChannel fileChannel;
     static File file;
+    static File defaultFile;
     File f;
     final static String BASE_DIR = "data";
     final static String CHARSET = "UTF-8";
@@ -24,18 +27,57 @@ public class BaseMedia {
     final char NORMAL = '1';
     final char DELETE = '0';
     int maxUnit = 1024;
+    static int dbLength = 10;
 
     static {
         file = new File(BASE_DIR);
         if (!file.exists())
             file.mkdir();
+        for (int i = 0; i < dbLength; i++) {
+            file = new File(BASE_DIR + File.separator + i);
+            if (!file.exists())
+                file.mkdir();
+            if (i == 0) {
+                defaultFile = file;
+            }
+        }
+
     }
 
     public BaseMedia() {
     }
 
+    /**
+     * 初始化10个分区为db
+     *
+     * @param db
+     * @param fileName
+     * @param memSize
+     * @throws Exception
+     */
+    public BaseMedia(int db, String fileName, int memSize) throws Exception {
+        do {
+            if (db == 0)
+                f = new File(defaultFile.getAbsolutePath() + File.separator + fileName);
+            else
+                f = new File(defaultFile.getParentFile().getAbsolutePath() + File.separator + db + File.separator + fileName);
+            if (!f.exists())
+                f.createNewFile();
+            fileChannel = new RandomAccessFile(f, "rw").getChannel();
+            buffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, 0, memSize * size);
+            if (SimpleDatabase.DBS.get(db) == null) {
+                Map<String, BaseMedia> files = new ConcurrentHashMap<>();
+                files.put(fileName, this);
+                SimpleDatabase.DBS.put(db, files);
+            } else {
+                SimpleDatabase.DBS.get(db).put(fileName, this);
+            }
+            db++;
+        } while (db < dbLength);
+    }
+
     public BaseMedia(String fileName, int memSize) throws Exception {
-        f = new File(file.getAbsolutePath() + File.separator + fileName);
+        f = new File(defaultFile.getAbsolutePath() + File.separator + fileName);
         if (!f.exists())
             f.createNewFile();
         fileChannel = new RandomAccessFile(f, "rw").getChannel();
