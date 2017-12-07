@@ -3,6 +3,7 @@ package com.lmx.jredis.transport;
 import com.lmx.jredis.core.BusHelper;
 import com.lmx.jredis.core.RedisServer;
 import com.lmx.jredis.core.SimpleRedisServer;
+import com.lmx.jredis.core.datastruct.Delegate;
 import com.lmx.jredis.core.datastruct.SimpleHash;
 import com.lmx.jredis.core.datastruct.SimpleKV;
 import com.lmx.jredis.core.datastruct.SimpleList;
@@ -41,15 +42,11 @@ public class NettyServer {
     EventLoopGroup bossGroup;
     EventLoopGroup workerGroup;
     @Autowired
-    SimpleKV simpleKV;
-    @Autowired
     BusHelper busHelper;
     @Autowired
-    SimpleList sl;
-    @Autowired
-    SimpleHash sh;
-    @Autowired
     NettyServerHandler nettyServerHandler;
+    @Autowired
+    Delegate delegate;
 
     @PostConstruct
     public void start() throws InterruptedException {
@@ -58,7 +55,7 @@ public class NettyServer {
         workerGroup = new NioEventLoopGroup(ioThreadNum);
         final RedisServer redis = new SimpleRedisServer();
         nettyServerHandler.init(redis);
-        redis.initStore(simpleKV, sl, sh, busHelper);
+        redis.initStore(busHelper, delegate);
         ServerBootstrap serverBootstrap = new ServerBootstrap();
         serverBootstrap.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)

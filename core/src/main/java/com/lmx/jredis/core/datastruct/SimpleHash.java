@@ -17,21 +17,20 @@ import java.util.*;
  * 基于内存读写key value操作,数据可持久,零延迟
  * Created by lmx on 2017/4/14.
  */
-@Component
 @Slf4j
 public class SimpleHash extends BaseOP {
-    DataMedia store;
-    IndexHelper ih;
 
-    @Value("${memorySize:1024}")
     int storeSize;
     int hashSize;
 
-    @PostConstruct
-    public void init() {
+    SimpleHash(int storeSize) {
+        this.storeSize = storeSize;
+    }
+
+    public void init(int db) {
         try {
-            store = new DataMedia("hashData", storeSize);
-            ih = new IndexHelper("hashIndex", storeSize / 8) {
+            store = new DataMedia(db, "hashData", storeSize);
+            ih = new IndexHelper(db, "hashIndex", storeSize / 8) {
                 public void wrapData(DataHelper dataHelper) {
                     if (dataHelper.getType().equals("hash")) {
                         if (!kv.containsKey(dataHelper.getHash())) {
@@ -53,7 +52,7 @@ public class SimpleHash extends BaseOP {
     public boolean write(String hash, String field, String value) {
         try {
             if (super.write(field, value)) {
-                Map<String, DataHelper> map = ((Map<String, DataHelper>) IndexHelper.type(hash));
+                Map<String, DataHelper> map = ((Map<String, DataHelper>) ih.type(hash));
                 if (!CollectionUtils.isEmpty(map)) {
                     for (Map.Entry<String, DataHelper> e : map.entrySet()) {
                         if (e.getKey().equals(field)) {
@@ -88,7 +87,7 @@ public class SimpleHash extends BaseOP {
             }
             List<String> resp = new ArrayList<>();
             long start = System.currentTimeMillis();
-            for (Map.Entry<String, DataHelper> e : ((Map<String, DataHelper>) IndexHelper.type(hash)).entrySet()) {
+            for (Map.Entry<String, DataHelper> e : ((Map<String, DataHelper>) ih.type(hash)).entrySet()) {
                 if (e.getKey().equals(field))
                     return store.get(e.getValue());
             }
@@ -104,11 +103,11 @@ public class SimpleHash extends BaseOP {
             if (super.isExpire(hash)) {
                 return null;
             }
-            byte[][] data = new byte[((Map) IndexHelper.type(hash)).size() * 2][];
+            byte[][] data = new byte[((Map) ih.type(hash)).size() * 2][];
             List<String> resp = new ArrayList<>();
             long start = System.currentTimeMillis();
             int i = 0;
-            for (Map.Entry<String, DataHelper> e : ((Map<String, DataHelper>) IndexHelper.type(hash)).entrySet()) {
+            for (Map.Entry<String, DataHelper> e : ((Map<String, DataHelper>) ih.type(hash)).entrySet()) {
                 data[i++] = e.getKey().getBytes();
                 data[i++] = store.get(e.getValue());
             }
@@ -122,12 +121,12 @@ public class SimpleHash extends BaseOP {
 
     @Override
     public boolean checkKeyType(String key) {
-        return isExist(key) ? IndexHelper.type(key) instanceof Map : true;
+        return isExist(key) ? ih.type(key) instanceof Map : true;
     }
 
     @Override
     public void removeData(String key) {
-        for (DataHelper d : ((Map<String, DataHelper>) IndexHelper.type(key)).values()) {
+        for (DataHelper d : ((Map<String, DataHelper>) ih.type(key)).values()) {
             ih.remove(d);
             store.remove(d);
         }

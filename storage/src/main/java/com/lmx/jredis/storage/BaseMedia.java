@@ -56,24 +56,21 @@ public class BaseMedia {
      * @throws Exception
      */
     public BaseMedia(int db, String fileName, int memSize) throws Exception {
-        do {
-            if (db == 0)
-                f = new File(defaultFile.getAbsolutePath() + File.separator + fileName);
-            else
-                f = new File(defaultFile.getParentFile().getAbsolutePath() + File.separator + db + File.separator + fileName);
-            if (!f.exists())
-                f.createNewFile();
-            fileChannel = new RandomAccessFile(f, "rw").getChannel();
-            buffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, 0, memSize * size);
-            if (SimpleDatabase.DBS.get(db) == null) {
-                Map<String, BaseMedia> files = new ConcurrentHashMap<>();
-                files.put(fileName, this);
-                SimpleDatabase.DBS.put(db, files);
-            } else {
-                SimpleDatabase.DBS.get(db).put(fileName, this);
-            }
-            db++;
-        } while (db < dbLength);
+        if (db == 0)
+            f = new File(defaultFile.getAbsolutePath() + File.separator + fileName);
+        else
+            f = new File(defaultFile.getParentFile().getAbsolutePath() + File.separator + db + File.separator + fileName);
+        if (!f.exists())
+            f.createNewFile();
+        fileChannel = new RandomAccessFile(f, "rw").getChannel();
+        buffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, 0, memSize * size);
+//        if (SimpleDatabase.DBS.get(db) == null) {
+//            Map<String, BaseMedia> files = new ConcurrentHashMap<>();
+//            files.put(fileName, this);
+//            SimpleDatabase.DBS.put(db, files);
+//        } else {
+//            SimpleDatabase.DBS.get(db).put(fileName, this);
+//        }
     }
 
     public BaseMedia(String fileName, int memSize) throws Exception {

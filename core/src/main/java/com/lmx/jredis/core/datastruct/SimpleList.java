@@ -18,21 +18,20 @@ import java.util.Map;
  * 基于内存读写key value操作,数据可持久,零延迟
  * Created by lmx on 2017/4/14.
  */
-@Component
 @Slf4j
 public class SimpleList extends BaseOP {
-    DataMedia store;
-    IndexHelper ih;
 
-    @Value("${memorySize:1024}")
     int storeSize;
     int listSize;
 
-    @PostConstruct
-    public void init() {
+    SimpleList(int storeSize) {
+        this.storeSize = storeSize;
+    }
+
+    public void init(int db) {
         try {
-            store = new DataMedia("listData", storeSize);
-            ih = new IndexHelper("listIndex", storeSize / 8) {
+            store = new DataMedia(db, "listData", storeSize);
+            ih = new IndexHelper(db, "listIndex", storeSize / 8) {
                 public void wrapData(DataHelper dataHelper) {
                     if (dataHelper.getType().equals("list")) {
                         if (!kv.containsKey(dataHelper.getKey())) {
@@ -94,12 +93,12 @@ public class SimpleList extends BaseOP {
 
     @Override
     public boolean checkKeyType(String key) {
-        return isExist(key) ? IndexHelper.type(key) instanceof List : true;
+        return isExist(key) ? ih.type(key) instanceof List : true;
     }
 
     @Override
     public void removeData(String key) {
-        for (DataHelper d : (List<DataHelper>) IndexHelper.type(key)) {
+        for (DataHelper d : (List<DataHelper>) ih.type(key)) {
             ih.remove(d);
             store.remove(d);
         }

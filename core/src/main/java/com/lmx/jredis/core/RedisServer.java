@@ -8,7 +8,7 @@ public interface RedisServer {
 
     public IntegerReply subscribe(byte[][] channel, ChannelHandlerContext chan);
 
-    public void initStore(SimpleKV simpleKV, SimpleList sl, SimpleHash sh, BusHelper bus);
+    public void initStore(BusHelper bus, Delegate delegate);
 
     /**
      * Append a value to a key

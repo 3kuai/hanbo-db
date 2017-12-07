@@ -1,8 +1,8 @@
 package com.lmx.jredis.core;
 
+import com.google.common.collect.Iterators;
 import com.lmx.jredis.core.datastruct.*;
 import com.lmx.jredis.storage.DataHelper;
-import com.lmx.jredis.storage.IndexHelper;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import redis.netty4.*;
@@ -16,31 +16,31 @@ import static java.lang.Double.parseDouble;
 import static java.lang.Integer.MAX_VALUE;
 import static redis.netty4.BulkReply.NIL_REPLY;
 import static redis.netty4.IntegerReply.integer;
-import static redis.netty4.StatusReply.OK;
-import static redis.netty4.StatusReply.QUIT;
-import static redis.netty4.StatusReply.WRONG_TYPE;
+import static redis.netty4.StatusReply.*;
 import static redis.util.Encoding.bytesToNum;
 import static redis.util.Encoding.numToBytes;
 
 public class SimpleRedisServer implements RedisServer {
-
+    BusHelper bus;
+    int db = 0;
+    Map<String, BaseOP> store;
     SimpleKV kv;
     SimpleList list;
     SimpleHash hash;
-
-    BusHelper bus;
-    int db = 0;
+    Delegate delegate;
 
     public IntegerReply subscribe(byte[][] channel, ChannelHandlerContext chan) {
         bus.regSubscriber(chan, channel);
         return integer(1);
     }
 
-    public void initStore(SimpleKV simpleKV, SimpleList sl, SimpleHash sh, BusHelper bus) {
-        this.kv = simpleKV;
-        this.list = sl;
-        this.hash = sh;
+    public void initStore(BusHelper bus, Delegate delegate) {
         this.bus = bus;
+        this.delegate = delegate;
+        store = delegate.select(0);
+        kv = (SimpleKV) store.get("kv");
+        list = (SimpleList) store.get("list");
+        hash = (SimpleHash) store.get("hash");
     }
 
     private static final StatusReply PONG = new StatusReply("PONG");
@@ -467,7 +467,7 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public BulkReply get(byte[] key0) throws RedisException {
-        Object o = kv.read(db, new String(key0));
+        Object o = kv.read(new String(key0));
         if (o instanceof byte[]) {
             return new BulkReply((byte[]) o);
         }
@@ -670,7 +670,7 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public StatusReply set(byte[] key0, byte[] value1) throws RedisException {
-        return kv.write(db, new String(key0), new String(value1)) ? OK : WRONG_TYPE;
+        return kv.write(new String(key0), new String(value1)) ? OK : WRONG_TYPE;
     }
 
     /**
@@ -840,7 +840,13 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public StatusReply select(byte[] index0) throws RedisException {
-        throw new RedisException("Not supported");
+        store = delegate.select(Integer.parseInt(new String(index0)));
+//        if (store == null)
+//            return StatusReply.QUIT;
+        kv = (SimpleKV) store.get("kv");
+        list = (SimpleList) store.get("list");
+        hash = (SimpleHash) store.get("hash");
+        return StatusReply.OK;
     }
 
     /**
@@ -1484,11 +1490,11 @@ public class SimpleRedisServer implements RedisServer {
         int total = 0;
         for (byte[] bytes : key0) {
             String key = new String(bytes);
-            if (IndexHelper.type(key) instanceof DataHelper)
+            if (kv.getIh().type(key) instanceof DataHelper)
                 kv.remove(key);
-            if (IndexHelper.type(key) instanceof List)
+            if (list.getIh().type(key) instanceof List)
                 list.remove(key);
-            if (IndexHelper.type(key) instanceof Map)
+            if (hash.getIh().type(key) instanceof Map)
                 hash.remove(key);
             total++;
         }
@@ -1530,15 +1536,14 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public IntegerReply expire(byte[] key0, byte[] seconds1) throws RedisException {
-//        Object o = _get(key0);
-//        if (o == null) {
-//            return integer(0);
-//        } else {
-//            expires.put(key0, bytesToNum(seconds1) * 1000 + now());
-//            return integer(1);
-//        }
-        if (IndexHelper.type(new String(key0)) != null) {
-            IndexHelper.setExpire(new String(key0), bytesToNum(seconds1) * 1000);
+        if (kv.getIh().type(new String(key0)) != null) {
+            kv.getIh().setExpire(new String(key0), bytesToNum(seconds1) * 1000);
+            return integer(1);
+        } else if (list.getIh().type(new String(key0)) != null) {
+            list.getIh().setExpire(new String(key0), bytesToNum(seconds1) * 1000);
+            return integer(1);
+        } else if (hash.getIh().type(new String(key0)) != null) {
+            hash.getIh().setExpire(new String(key0), bytesToNum(seconds1) * 1000);
             return integer(1);
         } else
             return integer(0);
@@ -1576,9 +1581,13 @@ public class SimpleRedisServer implements RedisServer {
             throw new RedisException("wrong number of arguments for KEYS");
         }
         List<Reply<ByteBuf>> replies = new ArrayList<Reply<ByteBuf>>();
-        Iterator<String> it = IndexHelper.kv.keySet().iterator();
-        while (it.hasNext()) {
-            String key = (String) it.next();
+
+        Iterator<String> it = kv.getIh().getKv().keySet().iterator();
+        Iterator<String> itl = list.getIh().getKv().keySet().iterator();
+        Iterator<String> ith = hash.getIh().getKv().keySet().iterator();
+        Iterator<String> all = Iterators.concat(it, ith, itl);
+        while (all.hasNext()) {
+            String key = (String) all.next();
             byte[] bytes = key.getBytes();
             boolean expired = false;
 //            Long l = expires.get(key);
@@ -1873,9 +1882,13 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public StatusReply type(byte[] key0) throws RedisException {
-        Object o = IndexHelper.type(new String(key0));
+        Object o = kv.getIh().type(new String(key0));
         if (o == null) {
-            return new StatusReply("none");
+            o = list.getIh().type(new String(key0));
+            if (o == null) {
+                o = hash.getIh().type(new String(key0));
+            } else
+                return new StatusReply("none");
         } else if (o instanceof DataHelper) {
             return new StatusReply("string");
         } else if (o instanceof Map) {

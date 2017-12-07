@@ -1,6 +1,7 @@
 package com.lmx.jredis.storage;
 
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
@@ -14,8 +15,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 @EqualsAndHashCode(callSuper = false)
 public abstract class IndexHelper extends BaseMedia {
-    public static Map<String, Object> kv = new ConcurrentHashMap<>();
-    public static Map<String, Long> expire = new ConcurrentHashMap<>();
+    @Getter
+    public Map<String, Object> kv = new ConcurrentHashMap<>();
+    public Map<String, Long> expire = new ConcurrentHashMap<>();
 
     public IndexHelper(String fileName, int size) throws Exception {
         super(fileName, size);
@@ -25,30 +27,30 @@ public abstract class IndexHelper extends BaseMedia {
         super(db, fileName, size);
     }
 
-    public static Object type(String key) {
+    public Object type(String key) {
         return kv.get(key);
     }
 
-    public static void setExpire(String key, long timeOut) {
+    public void setExpire(String key, long timeOut) {
         expire.put(key, timeOut + System.currentTimeMillis());
     }
 
-    public static long getExpire(String key) {
+    public long getExpire(String key) {
         if (expire.containsKey(key))
             return expire.get(key);
         else
             return 0L;
     }
 
-    public static long rmExpire(String key) {
+    public long rmExpire(String key) {
         return expire.remove(key);
     }
 
-    public static boolean exist(String key) {
+    public boolean exist(String key) {
         return kv.containsKey(key);
     }
 
-    public static void remove(String key) {
+    public void remove(String key) {
         kv.remove(key);
     }
 
