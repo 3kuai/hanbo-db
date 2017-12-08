@@ -1909,9 +1909,11 @@ public class SimpleRedisServer implements RedisServer {
             o = list.getIh().type(new String(key0));
             if (o == null) {
                 o = hash.getIh().type(new String(key0));
-            } else
-                return new StatusReply("none");
-        } else if (o instanceof DataHelper) {
+                if (o == null)
+                    return new StatusReply("none");
+            }
+        }
+        if (o instanceof DataHelper) {
             return new StatusReply("string");
         } else if (o instanceof Map) {
             return new StatusReply("hash");

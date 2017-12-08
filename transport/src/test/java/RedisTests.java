@@ -39,7 +39,7 @@ public class RedisTests {
 
     @Test
     public void test() throws Exception {
-        for (int i = 0; i < 1; ++i) {
+        for (int i = 0; i < 100; ++i) {
             es.execute(new Runnable() {
                 @Override
                 public void run() {
