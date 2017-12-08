@@ -7,8 +7,6 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 存储单元
@@ -23,7 +21,6 @@ public class BaseMedia {
     File f;
     final static String BASE_DIR = "data";
     final static String CHARSET = "UTF-8";
-    final static String SPLITTER = ":";
     final char NORMAL = '1';
     final char DELETE = '0';
     int maxUnit = 1024;
@@ -64,13 +61,6 @@ public class BaseMedia {
             f.createNewFile();
         fileChannel = new RandomAccessFile(f, "rw").getChannel();
         buffer = fileChannel.map(FileChannel.MapMode.READ_WRITE, 0, memSize * size);
-//        if (SimpleDatabase.DBS.get(db) == null) {
-//            Map<String, BaseMedia> files = new ConcurrentHashMap<>();
-//            files.put(fileName, this);
-//            SimpleDatabase.DBS.put(db, files);
-//        } else {
-//            SimpleDatabase.DBS.get(db).put(fileName, this);
-//        }
     }
 
     public BaseMedia(String fileName, int memSize) throws Exception {

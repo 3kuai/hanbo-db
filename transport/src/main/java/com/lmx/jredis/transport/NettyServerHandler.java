@@ -16,6 +16,7 @@ import redis.netty4.InlineReply;
 import redis.netty4.Reply;
 import redis.util.BytesKey;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -38,7 +39,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<Command> {
     }
 
     public void init(final RedisServer rs) {
-        Class<? extends RedisServer> aClass = rs.getClass();
+        final Class<? extends RedisServer> aClass = rs.getClass();
         for (final Method method : aClass.getMethods()) {
             final Class<?>[] types = method.getParameterTypes();
             methods.put(new BytesKey(method.getName().getBytes()), new Wrapper() {
@@ -48,9 +49,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<Command> {
                     long start = System.currentTimeMillis();
                     try {
                         command.toArguments(objects, types);
-                        if (method.getName().equals("subscribe")) {
-                            objects[objects.length - 1] = ch;
-                        }
+                        rs.setChannelHandlerContext(ch);
                         return (Reply) method.invoke(rs, objects);
                     } catch (IllegalAccessException e) {
                         throw new RedisException("Invalid server implementation");
@@ -107,7 +106,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<Command> {
     }
 
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        log.error("", cause);
+//        log.error("", cause);
         busHelper.unSubscriber(ctx);
         ctx.close();
     }

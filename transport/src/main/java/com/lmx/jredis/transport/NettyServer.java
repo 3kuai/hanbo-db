@@ -3,10 +3,7 @@ package com.lmx.jredis.transport;
 import com.lmx.jredis.core.BusHelper;
 import com.lmx.jredis.core.RedisServer;
 import com.lmx.jredis.core.SimpleRedisServer;
-import com.lmx.jredis.core.datastruct.Delegate;
-import com.lmx.jredis.core.datastruct.SimpleHash;
-import com.lmx.jredis.core.datastruct.SimpleKV;
-import com.lmx.jredis.core.datastruct.SimpleList;
+import com.lmx.jredis.core.datastruct.SimpleStructDelegate;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
@@ -46,7 +43,7 @@ public class NettyServer {
     @Autowired
     NettyServerHandler nettyServerHandler;
     @Autowired
-    Delegate delegate;
+    SimpleStructDelegate delegate;
 
     @PostConstruct
     public void start() throws InterruptedException {

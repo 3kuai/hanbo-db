@@ -5,6 +5,10 @@ import com.lmx.jredis.core.datastruct.*;
 import com.lmx.jredis.storage.DataHelper;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.util.Attribute;
+import io.netty.util.AttributeKey;
+import lombok.Getter;
+import lombok.Setter;
 import redis.netty4.*;
 import redis.util.*;
 
@@ -22,25 +26,45 @@ import static redis.util.Encoding.numToBytes;
 
 public class SimpleRedisServer implements RedisServer {
     BusHelper bus;
-    int db = 0;
-    Map<String, BaseOP> store;
-    SimpleKV kv;
-    SimpleList list;
-    SimpleHash hash;
-    Delegate delegate;
+    SimpleStructDelegate delegate;
+    //加入会话隔离db数据
+    ChannelHandlerContext channelHandlerContext;
+    String session = "sessionIdentify";
 
-    public IntegerReply subscribe(byte[][] channel, ChannelHandlerContext chan) {
-        bus.regSubscriber(chan, channel);
+    public void setChannelHandlerContext(ChannelHandlerContext channelHandlerContext) {
+        this.channelHandlerContext = channelHandlerContext;
+    }
+
+    private Map<String, BaseOP> getOpMap() {
+        Map<String, BaseOP> baseOPMap = (Map<String, BaseOP>) channelHandlerContext.channel().attr(AttributeKey.valueOf(session)).get();
+        return (baseOPMap == null ? delegate.select(0) : baseOPMap);
+    }
+
+    /**
+     * Change the selected database for the current connection
+     * Connection
+     *
+     * @param index0
+     * @return StatusReply
+     */
+    @Override
+    public StatusReply select(byte[] index0) throws RedisException {
+        Map<String, BaseOP> store = delegate.select(Integer.parseInt(new String(index0)));
+        Attribute attribute = channelHandlerContext.channel().attr(AttributeKey.valueOf(session));
+        if (null == store)
+            throw new RedisException();
+        attribute.set(store);
+        return StatusReply.OK;
+    }
+
+    public IntegerReply subscribe(byte[][] channel) {
+        bus.regSubscriber(channelHandlerContext, channel);
         return integer(1);
     }
 
-    public void initStore(BusHelper bus, Delegate delegate) {
+    public void initStore(BusHelper bus, SimpleStructDelegate delegate) {
         this.bus = bus;
         this.delegate = delegate;
-        store = delegate.select(0);
-        kv = (SimpleKV) store.get("kv");
-        list = (SimpleList) store.get("list");
-        hash = (SimpleHash) store.get("hash");
     }
 
     private static final StatusReply PONG = new StatusReply("PONG");
@@ -467,6 +491,7 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public BulkReply get(byte[] key0) throws RedisException {
+        SimpleKV kv = (SimpleKV) getOpMap().get("kv");
         Object o = kv.read(new String(key0));
         if (o instanceof byte[]) {
             return new BulkReply((byte[]) o);
@@ -670,6 +695,7 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public StatusReply set(byte[] key0, byte[] value1) throws RedisException {
+        SimpleKV kv = (SimpleKV) getOpMap().get("kv");
         return kv.write(new String(key0), new String(value1)) ? OK : WRONG_TYPE;
     }
 
@@ -829,24 +855,6 @@ public class SimpleRedisServer implements RedisServer {
     @Override
     public StatusReply quit() throws RedisException {
         return QUIT;
-    }
-
-    /**
-     * Change the selected database for the current connection
-     * Connection
-     *
-     * @param index0
-     * @return StatusReply
-     */
-    @Override
-    public StatusReply select(byte[] index0) throws RedisException {
-        store = delegate.select(Integer.parseInt(new String(index0)));
-//        if (store == null)
-//            return StatusReply.QUIT;
-        kv = (SimpleKV) store.get("kv");
-        list = (SimpleList) store.get("list");
-        hash = (SimpleHash) store.get("hash");
-        return StatusReply.OK;
     }
 
     /**
@@ -1255,6 +1263,7 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public Reply lpush(byte[] key0, byte[][] value1) throws RedisException {
+        SimpleList list = (SimpleList) getOpMap().get("list");
         int size = 0;
         for (byte[] value : value1) {
             if (!list.write(new String(key0), new String(value)))
@@ -1294,6 +1303,7 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public MultiBulkReply lrange(byte[] key0, byte[] start1, byte[] stop2) throws RedisException {
+        SimpleList list = (SimpleList) getOpMap().get("list");
         List<byte[]> list_ = list.read(new String(key0), Integer.parseInt(new String(start1)), Integer.parseInt(new String(stop2)));
         if (list_ == null) {
             return MultiBulkReply.EMPTY;
@@ -1450,6 +1460,7 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public Reply rpush(byte[] key0, byte[][] value1) throws RedisException {
+        SimpleList list = (SimpleList) getOpMap().get("list");
         int size = 0;
         for (byte[] value : value1) {
             if (!list.write(new String(key0), new String(value)))
@@ -1487,6 +1498,9 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public IntegerReply del(byte[][] key0) throws RedisException {
+        SimpleKV kv = (SimpleKV) getOpMap().get("kv");
+        SimpleList list = (SimpleList) getOpMap().get("list");
+        SimpleHash hash = (SimpleHash) getOpMap().get("hash");
         int total = 0;
         for (byte[] bytes : key0) {
             String key = new String(bytes);
@@ -1536,6 +1550,9 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public IntegerReply expire(byte[] key0, byte[] seconds1) throws RedisException {
+        SimpleKV kv = (SimpleKV) getOpMap().get("kv");
+        SimpleList list = (SimpleList) getOpMap().get("list");
+        SimpleHash hash = (SimpleHash) getOpMap().get("hash");
         if (kv.getIh().type(new String(key0)) != null) {
             kv.getIh().setExpire(new String(key0), bytesToNum(seconds1) * 1000);
             return integer(1);
@@ -1581,7 +1598,9 @@ public class SimpleRedisServer implements RedisServer {
             throw new RedisException("wrong number of arguments for KEYS");
         }
         List<Reply<ByteBuf>> replies = new ArrayList<Reply<ByteBuf>>();
-
+        SimpleKV kv = (SimpleKV) getOpMap().get("kv");
+        SimpleList list = (SimpleList) getOpMap().get("list");
+        SimpleHash hash = (SimpleHash) getOpMap().get("hash");
         Iterator<String> it = kv.getIh().getKv().keySet().iterator();
         Iterator<String> itl = list.getIh().getKv().keySet().iterator();
         Iterator<String> ith = hash.getIh().getKv().keySet().iterator();
@@ -1817,7 +1836,7 @@ public class SimpleRedisServer implements RedisServer {
     }
 
     /**
-     * Create a key using the provided serialized value, previously obtained using DUMP.
+     * Create a key using the provided serialized val.ue, previously obtained using DUMP.
      * Generic
      *
      * @param key0
@@ -1882,6 +1901,9 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public StatusReply type(byte[] key0) throws RedisException {
+        SimpleKV kv = (SimpleKV) getOpMap().get("kv");
+        SimpleList list = (SimpleList) getOpMap().get("list");
+        SimpleHash hash = (SimpleHash) getOpMap().get("hash");
         Object o = kv.getIh().type(new String(key0));
         if (o == null) {
             o = list.getIh().type(new String(key0));
@@ -2043,6 +2065,7 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public BulkReply hget(byte[] key0, byte[] field1) throws RedisException {
+        SimpleHash hash = (SimpleHash) getOpMap().get("hash");
         byte[] bytes = hash.read(new String(key0), new String(field1));
         if (bytes == null) {
             return NIL_REPLY;
@@ -2060,6 +2083,7 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public MultiBulkReply hgetall(byte[] key0) throws RedisException {
+        SimpleHash hash = (SimpleHash) getOpMap().get("hash");
         byte[][] data = hash.read(new String(key0));
         int size = data.length;
         Reply[] replies = new Reply[size];
@@ -2210,6 +2234,7 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public Reply hset(byte[] key0, byte[] field1, byte[] value2) throws RedisException {
+        SimpleHash hash = (SimpleHash) getOpMap().get("hash");
         return hash.write(new String(key0), new String(field1), new String(value2)) ? integer(1) : WRONG_TYPE;
     }
 
