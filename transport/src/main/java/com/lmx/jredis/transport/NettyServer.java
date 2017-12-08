@@ -47,7 +47,6 @@ public class NettyServer {
 
     @PostConstruct
     public void start() throws InterruptedException {
-        log.info("start jredis server...");
         bossGroup = new NioEventLoopGroup(ioThreadNum);
         workerGroup = new NioEventLoopGroup(ioThreadNum);
         final RedisServer redis = new SimpleRedisServer();
@@ -70,7 +69,7 @@ public class NettyServer {
                 });
         // Start the server.
         serverBootstrap.bind(host, port).sync();
-        log.info("jredis server listening on port {}", port);
+        System.err.printf("jRedis server listening on port %d \n", port);
     }
 
 
