@@ -7,7 +7,7 @@ import lombok.Data;
  */
 @Data
 public class DataHelper {
-    String type = "kv";
+    String type = DataTypeEnum.KV.getDesc();
     String key;
     String hash;
     int pos;//value position

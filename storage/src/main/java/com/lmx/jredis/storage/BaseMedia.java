@@ -20,7 +20,7 @@ public class BaseMedia {
     static File defaultFile;
     File f;
     final static String BASE_DIR = "data";
-    final static String CHARSET = "UTF-8";
+    final public static String CHARSET = "UTF-8";
     final char NORMAL = '1';
     final char DELETE = '0';
     int maxUnit = 1024;

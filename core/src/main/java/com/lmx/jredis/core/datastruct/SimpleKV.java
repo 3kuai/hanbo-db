@@ -1,15 +1,12 @@
 package com.lmx.jredis.core.datastruct;
 
 import com.google.common.base.Charsets;
-import com.lmx.jredis.storage.*;
-import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
+import com.lmx.jredis.storage.DataHelper;
+import com.lmx.jredis.storage.DataMedia;
+import com.lmx.jredis.storage.DataTypeEnum;
+import com.lmx.jredis.storage.IndexHelper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
 import java.nio.ByteBuffer;
 
 /**
@@ -30,7 +27,7 @@ public class SimpleKV extends BaseOP {
             store = new DataMedia(db, "valueData", storeSize);
             ih = new IndexHelper(db, "keyIndex", storeSize / 8) {
                 public void wrapData(DataHelper dataHelper) {
-                    if (dataHelper.getType().equals("kv")) {
+                    if (dataHelper.getType().equals(DataTypeEnum.KV.getDesc())) {
                         if (!kv.containsKey(dataHelper.getKey())) {
                             kv.put(dataHelper.getKey(), dataHelper);
                             expire.put(dataHelper.getKey(), dataHelper.getExpire());

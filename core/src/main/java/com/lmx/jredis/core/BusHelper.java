@@ -50,10 +50,10 @@ public class BusHelper {
     }
 
     public void unSubscriber(ChannelHandlerContext context) {
-        for (ConcurrentHashMap<ChannelHandlerContext, BytesKey> chcs : subscribers.values()) {
-            if (chcs.containsKey(context)) {
+        for (ConcurrentHashMap<ChannelHandlerContext, BytesKey> concurrentHashMap : subscribers.values()) {
+            if (concurrentHashMap.containsKey(context)) {
                 log.info("unSubscriber channel {}", context);
-                chcs.remove(context);
+                concurrentHashMap.remove(context);
             }
         }
     }

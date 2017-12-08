@@ -1,3 +1,4 @@
+import com.lmx.jredis.storage.DataTypeEnum;
 import com.lmx.jredis.transport.MainApplication;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.Test;
@@ -46,8 +47,8 @@ public class RedisTests {
                     int i = count.incrementAndGet();
                     template.opsForValue().set("aa" + i, "b" + i);
                     log.info("k=aa" + i + ",v=" + template.opsForValue().get("aa" + i));
-                    template.opsForList().leftPush("list" + i, "test");
-                    log.info("list=" + template.opsForList().range("list" + i, 0, -1));
+                    template.opsForList().leftPush(DataTypeEnum.LIST.getDesc() + i, "test");
+                    log.info("list=" + template.opsForList().range(DataTypeEnum.LIST.getDesc() + i, 0, -1));
                     template.opsForHash().put("user200" + i, "age", "25");
                     template.opsForHash().put("user200" + i, "sex", "男");
                     log.info("hv=" + template.opsForHash().get("user200" + i, "age"));

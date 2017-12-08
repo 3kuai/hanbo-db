@@ -1,6 +1,6 @@
 package com.lmx.jredis.core.datastruct;
 
-import com.lmx.jredis.storage.BaseMedia;
+import com.lmx.jredis.storage.DataTypeEnum;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -38,14 +38,14 @@ public class SimpleStructDelegate {
             simpleHash.init(i);
             if (db.get(i) == null) {
                 Map<String, BaseOP> ops = new HashMap<>();
-                ops.put("kv", simpleKV);
-                ops.put("list", simpleList);
-                ops.put("hash", simpleHash);
+                ops.put(DataTypeEnum.KV.getDesc(), simpleKV);
+                ops.put(DataTypeEnum.LIST.getDesc(), simpleList);
+                ops.put(DataTypeEnum.HASH.getDesc(), simpleHash);
                 db.put(i, ops);
             } else {
-                db.get(i).put("kv", simpleKV);
-                db.get(i).put("list", simpleList);
-                db.get(i).put("hash", simpleHash);
+                db.get(i).put(DataTypeEnum.KV.getDesc(), simpleKV);
+                db.get(i).put(DataTypeEnum.LIST.getDesc(), simpleList);
+                db.get(i).put(DataTypeEnum.HASH.getDesc(), simpleHash);
             }
         }
     }
