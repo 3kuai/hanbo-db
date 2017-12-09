@@ -1,40 +1,33 @@
 package com.lmx.jredis.core.datastruct;
 
-import com.google.common.base.Charsets;
 import com.lmx.jredis.storage.*;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-import org.springframework.util.CollectionUtils;
 
-import javax.annotation.PostConstruct;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 基于内存读写key value操作,数据可持久,零延迟
  * Created by lmx on 2017/4/14.
  */
-@Component
 @Slf4j
 public class SimpleList extends BaseOP {
-    DataMedia store;
-    IndexHelper ih;
 
-    @Value("${memorySize:1024}")
     int storeSize;
     int listSize;
 
-    @PostConstruct
-    public void init() {
+    SimpleList(int storeSize) {
+        this.storeSize = storeSize;
+    }
+
+    public void init(int db) {
         try {
-            store = new DataMedia("listData", storeSize);
-            ih = new IndexHelper("listIndex", storeSize / 8) {
+            store = new DataMedia(db, "listData", storeSize);
+            ih = new IndexHelper(db, "listIndex", storeSize / 8) {
                 public void wrapData(DataHelper dataHelper) {
-                    if (dataHelper.getType().equals("list")) {
+                    if (dataHelper.getType().equals(DataTypeEnum.LIST.getDesc())) {
                         if (!kv.containsKey(dataHelper.getKey())) {
                             kv.put(dataHelper.getKey(), new LinkedList<DataHelper>());
                             expire.put(dataHelper.getKey(), dataHelper.getExpire());
@@ -57,10 +50,10 @@ public class SimpleList extends BaseOP {
                 ByteBuffer b = ByteBuffer.allocateDirect(128);
                 int length = value.getBytes().length;
                 b.putInt(length);
-                b.put(value.getBytes("utf8"));
+                b.put(value.getBytes(BaseMedia.CHARSET));
                 b.flip();
                 DataHelper dh = store.add(b);
-                dh.setType("list");
+                dh.setType(DataTypeEnum.LIST.getDesc());
                 dh.setKey(key);
                 dh.setLength(length);
                 ih.add(dh);
@@ -94,12 +87,12 @@ public class SimpleList extends BaseOP {
 
     @Override
     public boolean checkKeyType(String key) {
-        return isExist(key) ? IndexHelper.type(key) instanceof List : true;
+        return isExist(key) ? ih.type(key) instanceof List : true;
     }
 
     @Override
     public void removeData(String key) {
-        for (DataHelper d : (List<DataHelper>) IndexHelper.type(key)) {
+        for (DataHelper d : (List<DataHelper>) ih.type(key)) {
             ih.remove(d);
             store.remove(d);
         }

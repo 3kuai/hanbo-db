@@ -3,35 +3,31 @@ package com.lmx.jredis.core.datastruct;
 import com.google.common.base.Charsets;
 import com.lmx.jredis.storage.DataHelper;
 import com.lmx.jredis.storage.DataMedia;
+import com.lmx.jredis.storage.DataTypeEnum;
 import com.lmx.jredis.storage.IndexHelper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
 import java.nio.ByteBuffer;
 
 /**
  * 基于内存读写key value操作,数据可持久,零延迟
  * Created by lmx on 2017/4/14.
  */
-@Component
 @Slf4j
 public class SimpleKV extends BaseOP {
-    DataMedia store;
-    IndexHelper ih;
-
-    @Value("${memorySize:1024}")
     int storeSize;
     int kvSize;
 
-    @PostConstruct
-    public void init() {
+    SimpleKV(int storeSize) {
+        this.storeSize = storeSize;
+    }
+
+    public void init(int db) {
         try {
-            store = new DataMedia("valueData", storeSize);
-            ih = new IndexHelper("keyIndex", storeSize / 8) {
+            store = new DataMedia(db, "valueData", storeSize);
+            ih = new IndexHelper(db, "keyIndex", storeSize / 8) {
                 public void wrapData(DataHelper dataHelper) {
-                    if (dataHelper.getType().equals("kv")) {
+                    if (dataHelper.getType().equals(DataTypeEnum.KV.getDesc())) {
                         if (!kv.containsKey(dataHelper.getKey())) {
                             kv.put(dataHelper.getKey(), dataHelper);
                             expire.put(dataHelper.getKey(), dataHelper.getExpire());
@@ -50,7 +46,7 @@ public class SimpleKV extends BaseOP {
     public boolean write(String key, String value) {
         try {
             if (super.write(key, value)) {
-                DataHelper dataHelper = (DataHelper) IndexHelper.type(key);
+                DataHelper dataHelper = (DataHelper) ih.type(key);
                 if (dataHelper != null) {
                     dataHelper = store.update(dataHelper, value.getBytes(Charsets.UTF_8));
                     ih.updateIndex(dataHelper);
@@ -80,7 +76,7 @@ public class SimpleKV extends BaseOP {
                 return null;
             }
             long start = System.currentTimeMillis();
-            byte[] data = store.get((DataHelper) IndexHelper.type(key));
+            byte[] data = store.get((DataHelper) ih.type(key));
             String resp = new String(data, Charsets.UTF_8);
             log.debug("key={},value={} cost={}ms", key, resp, (System.currentTimeMillis() - start));
             return data;
@@ -92,12 +88,12 @@ public class SimpleKV extends BaseOP {
 
     @Override
     public boolean checkKeyType(String key) {
-        return isExist(key) ? IndexHelper.type(key) instanceof DataHelper : true;
+        return isExist(key) ? ih.type(key) instanceof DataHelper : true;
     }
 
     @Override
     public void removeData(String key) {
-        DataHelper dataHelper = (DataHelper) IndexHelper.type(key);
+        DataHelper dataHelper = (DataHelper) ih.type(key);
         ih.remove(dataHelper);
         store.remove(dataHelper);
     }
