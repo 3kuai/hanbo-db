@@ -38,7 +38,7 @@ public class SimpleList extends BaseOP {
                 }
             };
             ih.recoverIndex();
-            log.info("recover data list size: {}", listSize);
+            log.info("db: {},recover data kv size: {}", db, listSize);
         } catch (Exception e) {
             log.error("init store file error", e);
         }

@@ -25,7 +25,7 @@ public class SimpleKV extends BaseOP {
     public void init(int db) {
         try {
             store = new DataMedia(db, "valueData", storeSize);
-            ih = new IndexHelper(db, "keyIndex", storeSize / 8) {
+            ih = new IndexHelper(db, "keyIndex", storeSize / 2) {
                 public void wrapData(DataHelper dataHelper) {
                     if (dataHelper.getType().equals(DataTypeEnum.KV.getDesc())) {
                         if (!kv.containsKey(dataHelper.getKey())) {
@@ -37,7 +37,7 @@ public class SimpleKV extends BaseOP {
                 }
             };
             ih.recoverIndex();
-            log.info("recover data kv size: {}", kvSize);
+            log.info("db: {},recover data kv size: {}", db, kvSize);
         } catch (Exception e) {
             log.error("init store file error", e);
         }

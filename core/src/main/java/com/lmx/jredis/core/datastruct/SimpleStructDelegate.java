@@ -19,6 +19,7 @@ public class SimpleStructDelegate {
     @Value("${memorySize:1024}")
     int storeSize;
     //db size
+    @Value("${dbSize:2}")
     int sharedSize = 10;
 
     public Map<Integer, Map<String, BaseOP>> db = new ConcurrentHashMap<>();

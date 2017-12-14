@@ -41,7 +41,7 @@ public class SimpleHash extends BaseOP {
                 }
             };
             ih.recoverIndex();
-            log.info("recover data hash size: {}", hashSize);
+            log.info("db: {},recover data kv size: {}", db, hashSize);
         } catch (Exception e) {
             log.error("init store file error", e);
         }
