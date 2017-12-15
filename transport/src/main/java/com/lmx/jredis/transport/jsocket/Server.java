@@ -36,6 +36,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static redis.netty4.ErrorReply.NYI_REPLY;
 import static redis.netty4.StatusReply.QUIT;
@@ -70,16 +72,18 @@ public class Server {
                  */
                 @Override
                 public void onEvent(RequestEvent event, long sequence, boolean endOfBatch) throws Exception {
-//                    System.out.println("event = [" + event + "], sequence = [" + sequence + "], endOfBatch = [" + endOfBatch + "]");
+                    log.info("event = [" + event + "], sequence = [" + sequence + "], endOfBatch = [" + endOfBatch + "]");
                     if (event.getValue() instanceof SelectionKey) {
                         SelectionKey key = (SelectionKey) event.getValue();
                         try {
                             handleReq((SocketChannel) key.channel());
                         } catch (Exception e) {
-                            key.cancel();
-                            ((SocketChannel) key.channel()).socket().close();
-                            key.channel().close();
-                            log.error("", e);
+                            try {
+                                key.cancel();
+                                ((SocketChannel) key.channel()).socket().close();
+                                key.channel().close();
+                            } catch (Exception e1) {
+                            }
                         }
                     }
                 }
@@ -124,23 +128,31 @@ public class Server {
             Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
             while (iterator.hasNext()) {
                 SelectionKey key = iterator.next();
-                if (key.isAcceptable()) {
-                    SocketChannel socketChannel = serverSocketChannel.accept();
-                    socketChannel.configureBlocking(false);
-                    socketChannel.register(selector, SelectionKey.OP_READ);
+                if (key.isValid()) {
+                    if (key.isAcceptable()) {
+                        SocketChannel socketChannel = serverSocketChannel.accept();
+                        socketChannel.configureBlocking(false);
+                        socketChannel.register(selector, SelectionKey.OP_READ);
+                    }
+                    if (key.isReadable()) {
+                        try {
+                            requestEventProducer.onData(key);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    iterator.remove();
                 }
-                if (key.isValid() && key.isReadable()) {
-                    requestEventProducer.onData(key);
-                }
-                iterator.remove();
             }
         }
     }
 
+    ExecutorService es = Executors.newFixedThreadPool(8);
+
     void handleReq(SocketChannel channel) throws Exception {
         ByteBuffer buf = ByteBuffer.allocate(1024);
         int len;
-        if (channel.isOpen() && (len = channel.read(buf)) > 0) {
+        if ((len = channel.read(buf)) > 0) {
             buf.flip();
             byte[] bytes = new byte[1024];
             buf.get(bytes, 0, len);
