@@ -16,7 +16,7 @@ public class RequestEventProducer<T> {
         @Override
         public void translateTo(RequestEvent event, long sequence, T arg0) {
             event.setValue(arg0);
-            log.info("event = [" + event + "], sequence = [" + sequence + "], arg0 = [" + arg0 + "]");
+//            log.error("event = [" + event + "], sequence = [" + sequence + "], arg0 = [" + arg0 + "]");
         }
     };
 

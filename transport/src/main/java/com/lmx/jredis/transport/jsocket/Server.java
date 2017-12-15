@@ -24,9 +24,12 @@ import redis.util.BytesKey;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -72,7 +75,7 @@ public class Server {
                  */
                 @Override
                 public void onEvent(RequestEvent event, long sequence, boolean endOfBatch) throws Exception {
-                    log.info("event = [" + event + "], sequence = [" + sequence + "], endOfBatch = [" + endOfBatch + "]");
+//                    log.error("event = [" + event + "], sequence = [" + sequence + "], endOfBatch = [" + endOfBatch + "]");
                     if (event.getValue() instanceof SelectionKey) {
                         SelectionKey key = (SelectionKey) event.getValue();
                         try {
@@ -86,6 +89,19 @@ public class Server {
                             }
                         }
                     }
+                    if (event.getValue() instanceof Socket) {
+                        Socket socket = (Socket) event.getValue();
+                        try {
+                            byte[] req = new byte[1024];
+                            int length;
+                            while ((length = socket.getInputStream().read(req)) != -1) {
+                                ByteBuf byteBuf = Unpooled.buffer(1024);
+                                byteBuf.writeBytes(req, 0, length);
+                                handleReq(byteBuf, socket);
+                            }
+                        } catch (Exception e) {
+                        }
+                    }
                 }
             });
             RingBuffer ringBuffer = disruptor.start();
@@ -94,7 +110,17 @@ public class Server {
                 @Override
                 public void run() {
                     try {
-                        startServer();
+                        startNioServer();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }).start();
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        startSocket();
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -108,7 +134,7 @@ public class Server {
     private static final byte LOWER_DIFF = 'a' - 'A';
     private Map<BytesKey, Wrapper> methods = new HashMap();
 
-    void startServer() throws Exception {
+    void startNioServer() throws Exception {
         Selector selector = Selector.open();
         ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
         serverSocketChannel.configureBlocking(false);
@@ -128,6 +154,7 @@ public class Server {
             Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
             while (iterator.hasNext()) {
                 SelectionKey key = iterator.next();
+                iterator.remove();
                 if (key.isValid()) {
                     if (key.isAcceptable()) {
                         SocketChannel socketChannel = serverSocketChannel.accept();
@@ -135,15 +162,23 @@ public class Server {
                         socketChannel.register(selector, SelectionKey.OP_READ);
                     }
                     if (key.isReadable()) {
-                        try {
-                            requestEventProducer.onData(key);
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
+                        requestEventProducer.onData(key);
                     }
-                    iterator.remove();
                 }
             }
+        }
+    }
+
+    void startSocket() {
+        try {
+            ServerSocket serverSocket = new ServerSocket();
+            serverSocket.bind(new InetSocketAddress("0.0.0.0", 16381));
+            System.err.printf("jRedis bio server listening on port=%d \n", 16381);
+            while (true) {
+                requestEventProducer.onData(serverSocket.accept());
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -163,6 +198,14 @@ public class Server {
             for (Object o : request) {
                 reply(channel, o);
             }
+        }
+    }
+
+    void handleReq(ByteBuf byteBuf, Socket socket) throws Exception {
+        List request = Lists.newArrayList();
+        redisCommandDecoder.decode(null, byteBuf, request);
+        for (Object o : request) {
+            reply(socket, o);
         }
     }
 
@@ -210,6 +253,58 @@ public class Server {
             ByteBuf byteBuf = Unpooled.buffer(1024 * 500);
             reply.write(byteBuf);
             ctx.write(byteBuf.nioBuffer());
+            byteBuf.release();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    void reply(Socket ctx, Object msg) {
+        Command msg_ = (Command) msg;
+        byte[] name = msg_.getName();
+
+        for (int i = 0; i < name.length; i++) {
+            byte b = name[i];
+            if (b >= 'A' && b <= 'Z') {
+                name[i] = (byte) (b + LOWER_DIFF);
+            }
+        }
+        Wrapper wrapper = methods.get(new BytesKey(name));
+        Reply reply = null;
+        if (wrapper == null) {
+            reply = new ErrorReply("unknown command '" + new String(name, Charsets.US_ASCII) + "'");
+        } else {
+            try {
+                reply = wrapper.execute(msg_, null);
+                if (reply == QUIT) {
+                    try {
+                        ctx.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                } else {
+                    if (msg_.isInline()) {
+                        if (reply == null) {
+                            reply = new InlineReply(null);
+                        } else {
+                            reply = new InlineReply(reply.data());
+                        }
+                    }
+                    if (reply == null) {
+                        reply = NYI_REPLY;
+                    }
+
+                }
+            } catch (RedisException e) {
+                e.printStackTrace();
+            }
+        }
+        try {
+            ByteBuf byteBuf = Unpooled.buffer(1024 * 500);
+            reply.write(byteBuf);
+            OutputStream os = ctx.getOutputStream();
+            os.write(ByteBuffer.allocate(byteBuf.readableBytes()).put(byteBuf.array(), 0, byteBuf.readableBytes()).array());
+            os.flush();
             byteBuf.release();
         } catch (IOException e) {
             e.printStackTrace();
