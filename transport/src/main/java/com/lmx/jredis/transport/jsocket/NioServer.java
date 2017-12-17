@@ -39,8 +39,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import static redis.netty4.ErrorReply.NYI_REPLY;
 import static redis.netty4.StatusReply.QUIT;
@@ -78,13 +76,17 @@ public class Server {
 //                    log.error("event = [" + event + "], sequence = [" + sequence + "], endOfBatch = [" + endOfBatch + "]");
                     if (event.getValue() instanceof SelectionKey) {
                         SelectionKey key = (SelectionKey) event.getValue();
+                        SocketChannel socketChannel = null;
                         try {
-                            handleReq((SocketChannel) key.channel());
+                            socketChannel = (SocketChannel) key.channel();
+                            handleReq(socketChannel);
+                            return;
                         } catch (Exception e) {
                             try {
                                 key.cancel();
-                                ((SocketChannel) key.channel()).socket().close();
-                                key.channel().close();
+                                socketChannel.socket().close();
+                                socketChannel.close();
+                                return;
                             } catch (Exception e1) {
                             }
                         }
@@ -106,29 +108,33 @@ public class Server {
             });
             RingBuffer ringBuffer = disruptor.start();
             requestEventProducer.setRingBuffer(ringBuffer);
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        startNioServer();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-            }).start();
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        startSocket();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-            }).start();
+            bindPort();
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    void bindPort() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    startNioServer();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    startSocket();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
     }
 
     private static final byte LOWER_DIFF = 'a' - 'A';
@@ -181,8 +187,6 @@ public class Server {
             e.printStackTrace();
         }
     }
-
-    ExecutorService es = Executors.newFixedThreadPool(8);
 
     void handleReq(SocketChannel channel) throws Exception {
         ByteBuffer buf = ByteBuffer.allocate(1024);
