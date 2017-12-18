@@ -40,12 +40,10 @@ public class SimpleNioRedisServer implements RedisServer {
         if (map == null)
             return delegate.select(0);
         else {
-            Map<String, BaseOP> baseOPMap = (Map<String, BaseOP>)map.get(session);
+            Map<String, BaseOP> baseOPMap = (Map<String, BaseOP>) map.get(session);
             return (baseOPMap == null ? delegate.select(0) : baseOPMap);
         }
     }
-
-    int i = 0;
 
     /**
      * Change the selected database for the current connection
@@ -62,9 +60,6 @@ public class SimpleNioRedisServer implements RedisServer {
         if (null == store)
             throw new RedisException();
         sessionStore.put(session, store);
-//        if (i++ >= 1) {
-//            throw new RedisException();
-//        }
         return StatusReply.OK;
     }
 

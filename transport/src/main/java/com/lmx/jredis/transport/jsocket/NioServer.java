@@ -147,5 +147,4 @@ public class NioServer {
         }
     }
 
-    byte[] CRLF = new byte[]{RedisReplyDecoder.CR, RedisReplyDecoder.LF};
 }
