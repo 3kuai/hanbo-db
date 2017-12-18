@@ -13,6 +13,7 @@ import redis.netty4.*;
 import redis.util.*;
 
 import java.lang.reflect.Field;
+import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.security.SecureRandom;
 import java.util.*;
@@ -30,12 +31,18 @@ public class SimpleNioRedisServer implements RedisServer {
     @Setter
     SimpleStructDelegate delegate;
     //加入会话隔离db数据
-    SocketChannel SocketChannel;
+    @Setter
+    SelectionKey key;
     String session = "sessionIdentify";
 
     private Map<String, BaseOP> getOpMap() {
-        Map<String, BaseOP> baseOPMap = null;
-        return (baseOPMap == null ? delegate.select(0) : baseOPMap);
+        Map map = ((Map) key.attachment());
+        if (map == null)
+            return delegate.select(0);
+        else {
+            Map<String, BaseOP> baseOPMap = (Map<String, BaseOP>)map.get(session);
+            return (baseOPMap == null ? delegate.select(0) : baseOPMap);
+        }
     }
 
     int i = 0;
@@ -50,13 +57,14 @@ public class SimpleNioRedisServer implements RedisServer {
     @Override
     public StatusReply select(byte[] index0) throws RedisException {
         Map<String, BaseOP> store = delegate.select(Integer.parseInt(new String(index0)));
-//        Attribute attribute = SocketChannel.channel().attr(AttributeKey.valueOf(session));
-//        if (null == store)
-//            throw new RedisException();
-//        attribute.set(store);
-        if (i++ >= 1) {
+        Map sessionStore = new HashMap<>();
+        key.attach(sessionStore);
+        if (null == store)
             throw new RedisException();
-        }
+        sessionStore.put(session, store);
+//        if (i++ >= 1) {
+//            throw new RedisException();
+//        }
         return StatusReply.OK;
     }
 
