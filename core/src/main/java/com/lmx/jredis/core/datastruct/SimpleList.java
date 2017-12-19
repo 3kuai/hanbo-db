@@ -25,7 +25,7 @@ public class SimpleList extends BaseOP {
     public void init(int db) {
         try {
             store = new DataMedia(db, "listData", storeSize);
-            ih = new IndexHelper(db, "listIndex", storeSize / 8) {
+            /*ih = new IndexHelper(db, "listIndex", storeSize / 8) {
                 public void wrapData(DataHelper dataHelper) {
                     if (dataHelper.getType().equals(DataTypeEnum.LIST.getDesc())) {
                         if (!kv.containsKey(dataHelper.getKey())) {
@@ -38,7 +38,7 @@ public class SimpleList extends BaseOP {
                 }
             };
             ih.recoverIndex();
-            log.info("db: {},recover data kv size: {}", db, listSize);
+            log.info("db: {},recover data kv size: {}", db, listSize);*/
         } catch (Exception e) {
             log.error("init store file error", e);
         }

@@ -6,6 +6,7 @@ import com.lmax.disruptor.util.DaemonThreadFactory;
 import com.lmx.jredis.core.SimpleNioRedisServer;
 import com.lmx.jredis.core.datastruct.SimpleStructDelegate;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,7 +42,7 @@ public class NioServer {
     @Data
     static class BufferUtil {
         ByteBuffer readBuf = ByteBuffer.allocate(1024);
-        ByteBuffer writeBuf = ByteBuffer.allocate(1024 * 10);
+        ByteBuf writeBuf = Unpooled.buffer(1024 * 1024 * 10);
     }
 
 
@@ -107,13 +108,14 @@ public class NioServer {
                         try {
 //                          requestEventProducer.onData(key, selector);
                             netEventHandler.handleReq(key, bufferUtil);
-                            if (bufferUtil.getWriteBuf().hasRemaining()) {
+                            if (bufferUtil.getWriteBuf().readableBytes() > 0) {
                                 /*SocketChannel socketChannel = (SocketChannel) key.channel();
                                 socketChannel.configureBlocking(false);
                                 socketChannel.register(selector, SelectionKey.OP_WRITE);*/
-                                ByteBuffer resp = bufferUtil.getWriteBuf();
+                                ByteBuffer resp = bufferUtil.getWriteBuf().nioBuffer();
                                 SocketChannel socketChannel = (SocketChannel) key.channel();
                                 socketChannel.write(resp);
+                                bufferUtil.getWriteBuf().clear();
                                 resp.clear();
                             }
                         } catch (Exception e) {

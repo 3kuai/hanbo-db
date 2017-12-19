@@ -122,7 +122,7 @@ public class NetEventHandler implements EventHandler<RequestEvent> {
     }
 
 
-    void reply(SocketChannel ctx, Object msg, ByteBuffer byteBuffer, SelectionKey key) {
+    void reply(SocketChannel ctx, Object msg, ByteBuf byteBuf, SelectionKey key) {
         Command msg_ = (Command) msg;
         byte[] name = msg_.getName();
 
@@ -163,10 +163,8 @@ public class NetEventHandler implements EventHandler<RequestEvent> {
             }
         }
         try {
-            ByteBuf byteBuf = Unpooled.buffer(byteBuffer.capacity());
+
             redisCommandEncoder.encode(null, reply, byteBuf);
-            byteBuffer.put(byteBuf.nioBuffer().array(), 0, byteBuf.readableBytes());
-            byteBuffer.flip();
         } catch (Exception e) {
             e.printStackTrace();
         }

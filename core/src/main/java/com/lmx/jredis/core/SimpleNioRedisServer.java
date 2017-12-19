@@ -4,6 +4,7 @@ import com.google.common.collect.Iterators;
 import com.lmx.jredis.core.datastruct.*;
 import com.lmx.jredis.storage.DataHelper;
 import com.lmx.jredis.storage.DataTypeEnum;
+import com.lmx.jredis.storage.IndexHelper;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.Attribute;
@@ -35,13 +36,12 @@ public class SimpleNioRedisServer implements RedisServer {
     SelectionKey key;
     String session = "sessionIdentify";
 
-    private Map<String, BaseOP> getOpMap() {
+    private SimpleStructDelegate.RedisDB getRedisDB() {
         Map map = ((Map) key.attachment());
         if (map == null)
             return delegate.select(0);
         else {
-            Map<String, BaseOP> baseOPMap = (Map<String, BaseOP>) map.get(session);
-            return (baseOPMap == null ? delegate.select(0) : baseOPMap);
+            return (SimpleStructDelegate.RedisDB) map.get(session);
         }
     }
 
@@ -54,11 +54,13 @@ public class SimpleNioRedisServer implements RedisServer {
      */
     @Override
     public StatusReply select(byte[] index0) throws RedisException {
-        Map<String, BaseOP> store = delegate.select(Integer.parseInt(new String(index0)));
+        SimpleStructDelegate.RedisDB store = delegate.select(Integer.parseInt(new String(index0)));
         Map sessionStore = new HashMap<>();
         key.attach(sessionStore);
-        if (null == store)
+        if (null == store) {
+            sessionStore.clear();
             throw new RedisException();
+        }
         sessionStore.put(session, store);
         return StatusReply.OK;
     }
@@ -420,7 +422,7 @@ public class SimpleNioRedisServer implements RedisServer {
      */
     @Override
     public IntegerReply bitop(byte[] operation0, byte[] destkey1, byte[][] key2) throws RedisException {
-        BitOp bitOp = BitOp.valueOf(new String(operation0).toUpperCase());
+        SimpleRedisServer.BitOp bitOp = SimpleRedisServer.BitOp.valueOf(new String(operation0).toUpperCase());
         int size = 0;
         for (byte[] aKey2 : key2) {
             int length = aKey2.length;
@@ -434,7 +436,7 @@ public class SimpleNioRedisServer implements RedisServer {
             src = _getbytes(aKey2);
             if (bytes == null) {
                 bytes = new byte[size];
-                if (bitOp == BitOp.NOT) {
+                if (bitOp == SimpleRedisServer.BitOp.NOT) {
                     if (key2.length > 1) {
                         throw new RedisException("invalid number of arguments for 'bitop' NOT operation");
                     }
@@ -502,8 +504,8 @@ public class SimpleNioRedisServer implements RedisServer {
      */
     @Override
     public BulkReply get(byte[] key0) throws RedisException {
-        SimpleKV kv = (SimpleKV) getOpMap().get(DataTypeEnum.KV.getDesc());
-        Object o = kv.read(new String(key0));
+        SimpleStructDelegate.RedisDB db = getRedisDB();
+        Object o = db.getSimpleKV().read(new String(key0));
         if (o instanceof byte[]) {
             return new BulkReply((byte[]) o);
         }
@@ -706,8 +708,8 @@ public class SimpleNioRedisServer implements RedisServer {
      */
     @Override
     public StatusReply set(byte[] key0, byte[] value1) throws RedisException {
-        SimpleKV kv = (SimpleKV) getOpMap().get(DataTypeEnum.KV.getDesc());
-        return kv.write(new String(key0), new String(value1)) ? OK : WRONG_TYPE;
+        SimpleStructDelegate.RedisDB kv = getRedisDB();
+        return kv.getSimpleKV().write(new String(key0), new String(value1)) ? OK : WRONG_TYPE;
     }
 
     /**
@@ -1221,14 +1223,14 @@ public class SimpleNioRedisServer implements RedisServer {
      */
     @Override
     public IntegerReply linsert(byte[] key0, byte[] where1, byte[] pivot2, byte[] value3) throws RedisException {
-        Where where = Where.valueOf(new String(where1).toUpperCase());
+        SimpleRedisServer.Where where = SimpleRedisServer.Where.valueOf(new String(where1).toUpperCase());
         List<BytesValue> list = _getlist(key0, true);
         BytesKey pivot = new BytesKey(pivot2);
         int i = list.indexOf(pivot);
         if (i == -1) {
             return integer(-1);
         }
-        list.add(i + (where == Where.BEFORE ? 0 : 1), new BytesKey(value3));
+        list.add(i + (where == SimpleRedisServer.Where.BEFORE ? 0 : 1), new BytesKey(value3));
         return integer(list.size());
     }
 
@@ -1274,7 +1276,7 @@ public class SimpleNioRedisServer implements RedisServer {
      */
     @Override
     public Reply lpush(byte[] key0, byte[][] value1) throws RedisException {
-        SimpleList list = (SimpleList) getOpMap().get(DataTypeEnum.LIST.getDesc());
+        SimpleList list = getRedisDB().getSimpleList();
         int size = 0;
         for (byte[] value : value1) {
             if (!list.write(new String(key0), new String(value)))
@@ -1314,7 +1316,7 @@ public class SimpleNioRedisServer implements RedisServer {
      */
     @Override
     public MultiBulkReply lrange(byte[] key0, byte[] start1, byte[] stop2) throws RedisException {
-        SimpleList list = (SimpleList) getOpMap().get(DataTypeEnum.LIST.getDesc());
+        SimpleList list = getRedisDB().getSimpleList();
         List<byte[]> list_ = list.read(new String(key0), Integer.parseInt(new String(start1)), Integer.parseInt(new String(stop2)));
         if (list_ == null) {
             return MultiBulkReply.EMPTY;
@@ -1471,7 +1473,7 @@ public class SimpleNioRedisServer implements RedisServer {
      */
     @Override
     public Reply rpush(byte[] key0, byte[][] value1) throws RedisException {
-        SimpleList list = (SimpleList) getOpMap().get(DataTypeEnum.LIST.getDesc());
+        SimpleList list = (SimpleList) getRedisDB().getSimpleList();
         int size = 0;
         for (byte[] value : value1) {
             if (!list.write(new String(key0), new String(value)))
@@ -1509,17 +1511,18 @@ public class SimpleNioRedisServer implements RedisServer {
      */
     @Override
     public IntegerReply del(byte[][] key0) throws RedisException {
-        SimpleKV kv = (SimpleKV) getOpMap().get(DataTypeEnum.KV.getDesc());
-        SimpleList list = (SimpleList) getOpMap().get(DataTypeEnum.LIST.getDesc());
-        SimpleHash hash = (SimpleHash) getOpMap().get(DataTypeEnum.HASH.getDesc());
+        IndexHelper indexHelper = getRedisDB().getIndexHelper();
+        SimpleKV kv = getRedisDB().getSimpleKV();
+        SimpleList list = getRedisDB().getSimpleList();
+        SimpleHash hash = getRedisDB().getSimpleHash();
         int total = 0;
         for (byte[] bytes : key0) {
             String key = new String(bytes);
-            if (kv.getIh().type(key) instanceof DataHelper)
+            if (indexHelper.type(key) instanceof DataHelper)
                 kv.remove(key);
-            if (list.getIh().type(key) instanceof List)
+            if (indexHelper.type(key) instanceof List)
                 list.remove(key);
-            if (hash.getIh().type(key) instanceof Map)
+            if (indexHelper.type(key) instanceof Map)
                 hash.remove(key);
             total++;
         }
@@ -1561,17 +1564,9 @@ public class SimpleNioRedisServer implements RedisServer {
      */
     @Override
     public IntegerReply expire(byte[] key0, byte[] seconds1) throws RedisException {
-        SimpleKV kv = (SimpleKV) getOpMap().get(DataTypeEnum.KV.getDesc());
-        SimpleList list = (SimpleList) getOpMap().get(DataTypeEnum.LIST.getDesc());
-        SimpleHash hash = (SimpleHash) getOpMap().get(DataTypeEnum.HASH.getDesc());
-        if (kv.getIh().type(new String(key0)) != null) {
-            kv.getIh().setExpire(new String(key0), bytesToNum(seconds1) * 1000);
-            return integer(1);
-        } else if (list.getIh().type(new String(key0)) != null) {
-            list.getIh().setExpire(new String(key0), bytesToNum(seconds1) * 1000);
-            return integer(1);
-        } else if (hash.getIh().type(new String(key0)) != null) {
-            hash.getIh().setExpire(new String(key0), bytesToNum(seconds1) * 1000);
+        IndexHelper indexHelper = getRedisDB().getIndexHelper();
+        if (indexHelper.type(new String(key0)) != null) {
+            indexHelper.setExpire(new String(key0), bytesToNum(seconds1) * 1000);
             return integer(1);
         } else
             return integer(0);
@@ -1609,25 +1604,12 @@ public class SimpleNioRedisServer implements RedisServer {
             throw new RedisException("wrong number of arguments for KEYS");
         }
         List<Reply<ByteBuf>> replies = new ArrayList<Reply<ByteBuf>>();
-        SimpleKV kv = (SimpleKV) getOpMap().get(DataTypeEnum.KV.getDesc());
-        SimpleList list = (SimpleList) getOpMap().get(DataTypeEnum.LIST.getDesc());
-        SimpleHash hash = (SimpleHash) getOpMap().get(DataTypeEnum.HASH.getDesc());
-        Iterator<String> it = kv.getIh().getKv().keySet().iterator();
-        Iterator<String> itl = list.getIh().getKv().keySet().iterator();
-        Iterator<String> ith = hash.getIh().getKv().keySet().iterator();
-        Iterator<String> all = Iterators.concat(it, ith, itl);
-        while (all.hasNext()) {
-            String key = (String) all.next();
+        IndexHelper indexHelper = getRedisDB().getIndexHelper();
+        Iterator<String> it = indexHelper.getKv().keySet().iterator();
+        while (it.hasNext()) {
+            String key = it.next();
             byte[] bytes = key.getBytes();
-            boolean expired = false;
-//            Long l = expires.get(key);
-//            if (l != null) {
-//                if (l < now()) {
-//                    expired = true;
-//                    it.remove();
-//                }
-//            }
-            if (matches(bytes, pattern0, 0, 0) /*&& !expired*/) {
+            if (matches(bytes, pattern0, 0, 0)) {
                 replies.add(new BulkReply(bytes));
             }
         }
@@ -1912,17 +1894,10 @@ public class SimpleNioRedisServer implements RedisServer {
      */
     @Override
     public StatusReply type(byte[] key0) throws RedisException {
-        SimpleKV kv = (SimpleKV) getOpMap().get(DataTypeEnum.KV.getDesc());
-        SimpleList list = (SimpleList) getOpMap().get(DataTypeEnum.LIST.getDesc());
-        SimpleHash hash = (SimpleHash) getOpMap().get(DataTypeEnum.HASH.getDesc());
-        Object o = kv.getIh().type(new String(key0));
+        IndexHelper indexHelper = getRedisDB().getIndexHelper();
+        Object o = indexHelper.type(new String(key0));
         if (o == null) {
-            o = list.getIh().type(new String(key0));
-            if (o == null) {
-                o = hash.getIh().type(new String(key0));
-                if (o == null)
-                    return new StatusReply("none");
-            }
+            return new StatusReply("none");
         }
         if (o instanceof DataHelper) {
             return new StatusReply("string");
@@ -2078,7 +2053,7 @@ public class SimpleNioRedisServer implements RedisServer {
      */
     @Override
     public BulkReply hget(byte[] key0, byte[] field1) throws RedisException {
-        SimpleHash hash = (SimpleHash) getOpMap().get(DataTypeEnum.HASH.getDesc());
+        SimpleHash hash = getRedisDB().getSimpleHash();
         byte[] bytes = hash.read(new String(key0), new String(field1));
         if (bytes == null) {
             return NIL_REPLY;
@@ -2096,7 +2071,7 @@ public class SimpleNioRedisServer implements RedisServer {
      */
     @Override
     public MultiBulkReply hgetall(byte[] key0) throws RedisException {
-        SimpleHash hash = (SimpleHash) getOpMap().get(DataTypeEnum.HASH.getDesc());
+        SimpleHash hash = getRedisDB().getSimpleHash();
         byte[][] data = hash.read(new String(key0));
         int size = data.length;
         Reply[] replies = new Reply[size];
@@ -2247,7 +2222,7 @@ public class SimpleNioRedisServer implements RedisServer {
      */
     @Override
     public Reply hset(byte[] key0, byte[] field1, byte[] value2) throws RedisException {
-        SimpleHash hash = (SimpleHash) getOpMap().get(DataTypeEnum.HASH.getDesc());
+        SimpleHash hash = getRedisDB().getSimpleHash();
         return hash.write(new String(key0), new String(field1), new String(value2)) ? integer(1) : WRONG_TYPE;
     }
 
@@ -2692,8 +2667,8 @@ public class SimpleNioRedisServer implements RedisServer {
             throw new RedisException("wrong number of arguments for 'zcount' command");
         }
         ZSet zset = _getzset(key0, false);
-        Score min = _toscorerange(min1);
-        Score max = _toscorerange(max2);
+        SimpleRedisServer.Score min = _toscorerange(min1);
+        SimpleRedisServer.Score max = _toscorerange(max2);
         Iterable<ZSetEntry> entries = zset.subSet(_todouble(min1), _todouble(max2));
         int total = 0;
         for (ZSetEntry entry : entries) {
@@ -2756,7 +2731,7 @@ public class SimpleNioRedisServer implements RedisServer {
         }
         int position = numkeys;
         double[] weights = null;
-        Aggregate type = null;
+        SimpleRedisServer.Aggregate type = null;
         if (key2.length > position) {
             if ("weights".equals(new String(key2[position]).toLowerCase())) {
                 position++;
@@ -2771,7 +2746,7 @@ public class SimpleNioRedisServer implements RedisServer {
             }
             if (key2.length > position + 1) {
                 if ("aggregate".equals(new String(key2[position]).toLowerCase())) {
-                    type = Aggregate.valueOf(new String(key2[position + 1]).toUpperCase());
+                    type = SimpleRedisServer.Aggregate.valueOf(new String(key2[position + 1]).toUpperCase());
                 }
             } else if (key2.length != position) {
                 throw new RedisException("wrong number of arguments for '" + name + "' command");
@@ -2797,15 +2772,15 @@ public class SimpleNioRedisServer implements RedisServer {
                     destination.remove(key);
                     if (union || current != null) {
                         double newscore = entry.getScore() * (weights == null ? 1 : weights[i]);
-                        if (type == null || type == Aggregate.SUM) {
+                        if (type == null || type == SimpleRedisServer.Aggregate.SUM) {
                             if (current != null) {
                                 newscore += current.getScore();
                             }
-                        } else if (type == Aggregate.MIN) {
+                        } else if (type == SimpleRedisServer.Aggregate.MIN) {
                             if (current != null && newscore > current.getScore()) {
                                 newscore = current.getScore();
                             }
-                        } else if (type == Aggregate.MAX) {
+                        } else if (type == SimpleRedisServer.Aggregate.MAX) {
                             if (current != null && newscore < current.getScore()) {
                                 newscore = current.getScore();
                             }
@@ -2925,8 +2900,8 @@ public class SimpleNioRedisServer implements RedisServer {
                 throw notInteger();
             }
         }
-        Score min = _toscorerange(min1);
-        Score max = _toscorerange(max2);
+        SimpleRedisServer.Score min = _toscorerange(min1);
+        SimpleRedisServer.Score max = _toscorerange(max2);
         List<ZSetEntry> entries = zset.subSet(min.value, max.value);
         if (reverse) Collections.reverse(entries);
         int current = 0;
@@ -2941,8 +2916,8 @@ public class SimpleNioRedisServer implements RedisServer {
         return list;
     }
 
-    private Score _toscorerange(byte[] specifier) {
-        Score score = new Score();
+    private SimpleRedisServer.Score _toscorerange(byte[] specifier) {
+        SimpleRedisServer.Score score = new SimpleRedisServer.Score();
         String s = new String(specifier).toLowerCase();
         if (s.startsWith("(")) {
             score.inclusive = false;
@@ -3046,8 +3021,8 @@ public class SimpleNioRedisServer implements RedisServer {
     public IntegerReply zremrangebyscore(byte[] key0, byte[] min1, byte[] max2) throws RedisException {
         ZSet zset = _getzset(key0, false);
         if (zset.isEmpty()) return integer(0);
-        Score min = _toscorerange(min1);
-        Score max = _toscorerange(max2);
+        SimpleRedisServer.Score min = _toscorerange(min1);
+        SimpleRedisServer.Score max = _toscorerange(max2);
         List<ZSetEntry> entries = zset.subSet(min.value, max.value);
         int total = 0;
         for (ZSetEntry entry : new ArrayList<ZSetEntry>(entries)) {
