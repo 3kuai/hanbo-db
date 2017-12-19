@@ -2,7 +2,6 @@
 redis of java implement
 
 ## features
-### support a part of redis protocol e.g:
     1.set get
     2.lpush rpush lrange
     3.hset hget hgetall
@@ -16,7 +15,7 @@ redis of java implement
     and then each item write in 4 byte with it bytes length and actual byte number.
     3.key and value are seperated in storage
 ### protocol
-    1.compati redis protocol 
+    1.compati redis protocol (support a part of redis protocol)
     2.based on netty codec
 ### transport
     based on netty 4
