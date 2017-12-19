@@ -10,7 +10,7 @@ public interface RedisServer {
 
     IntegerReply subscribe(byte[][] channel);
 
-    void initStore(BusHelper bus, SimpleStructDelegate delegate);
+    void initStore(BusHelper bus, RedisDbDelegate delegate);
 
     /**
      * Append a value to a key

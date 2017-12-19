@@ -18,7 +18,7 @@ public class RedisCommandDecoder extends ReplayingDecoder<Void> {
     private int arguments = 0;
 
     @Override
-    protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
+    public void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
         if (bytes != null) {
             int numArgs = bytes.length;
             for (int i = arguments; i < numArgs; i++) {

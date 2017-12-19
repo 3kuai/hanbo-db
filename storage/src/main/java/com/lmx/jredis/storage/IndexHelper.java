@@ -90,7 +90,7 @@ public abstract class IndexHelper extends BaseMedia {
         buffer.putInt(curPos);//head 4 byte in last postion
         dh.selfPos = curPos - 2;
         buffer.rewind();
-        if (dh.getType().equals(DataTypeEnum.KV.getDesc())/* && !kv.containsKey(key)*/) {
+        if (dh.getType().equals(DataTypeEnum.KV.getDesc())) {
             kv.put(key, dh);
         } else if (dh.getType().equals(DataTypeEnum.LIST.getDesc())) {
             if (!kv.containsKey(key)) {
@@ -111,6 +111,7 @@ public abstract class IndexHelper extends BaseMedia {
     public void updateIndex(DataHelper dh) {
         buffer.position(dh.selfPos - 8 - 4);
         buffer.putInt(dh.length);
+        buffer.rewind();
     }
 
     public void remove(DataHelper dh) {

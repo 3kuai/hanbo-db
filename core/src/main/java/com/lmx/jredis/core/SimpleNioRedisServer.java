@@ -1,20 +1,17 @@
 package com.lmx.jredis.core;
 
-import com.lmx.jredis.core.datastruct.SimpleHash;
-import com.lmx.jredis.core.datastruct.SimpleKV;
-import com.lmx.jredis.core.datastruct.SimpleList;
-import com.lmx.jredis.core.datastruct.RedisDbDelegate;
+import com.lmx.jredis.core.datastruct.*;
 import com.lmx.jredis.storage.DataHelper;
 import com.lmx.jredis.storage.DataTypeEnum;
 import com.lmx.jredis.storage.IndexHelper;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.util.Attribute;
-import io.netty.util.AttributeKey;
+import lombok.Setter;
 import redis.netty4.*;
 import redis.util.*;
 
 import java.lang.reflect.Field;
+import java.nio.channels.SelectionKey;
 import java.security.SecureRandom;
 import java.util.*;
 
@@ -26,20 +23,22 @@ import static redis.netty4.StatusReply.*;
 import static redis.util.Encoding.bytesToNum;
 import static redis.util.Encoding.numToBytes;
 
-public class SimpleRedisServer implements RedisServer {
+public class SimpleNioRedisServer implements RedisServer {
     BusHelper bus;
+    @Setter
     RedisDbDelegate delegate;
     //加入会话隔离db数据
-    ChannelHandlerContext channelHandlerContext;
+    @Setter
+    SelectionKey key;
     String session = "sessionIdentify";
 
-    public void setChannelHandlerContext(ChannelHandlerContext channelHandlerContext) {
-        this.channelHandlerContext = channelHandlerContext;
-    }
-
     private RedisDbDelegate.RedisDB getRedisDB() {
-        RedisDbDelegate.RedisDB redisDB = (RedisDbDelegate.RedisDB) channelHandlerContext.channel().attr(AttributeKey.valueOf(session)).get();
-        return (redisDB == null ? delegate.select(0) : redisDB);
+        Map map = ((Map) key.attachment());
+        if (map == null)
+            return delegate.select(0);
+        else {
+            return (RedisDbDelegate.RedisDB) map.get(session);
+        }
     }
 
     /**
@@ -52,17 +51,23 @@ public class SimpleRedisServer implements RedisServer {
     @Override
     public StatusReply select(byte[] index0) throws RedisException {
         RedisDbDelegate.RedisDB store = delegate.select(Integer.parseInt(new String(index0)));
-        Attribute attribute = channelHandlerContext.channel().attr(AttributeKey.valueOf(session));
+        Map sessionStore = new HashMap<>();
+        key.attach(sessionStore);
         if (null == store) {
-            attribute.remove();
+            sessionStore.clear();
             throw new RedisException();
         }
-        attribute.set(store);
+        sessionStore.put(session, store);
         return StatusReply.OK;
     }
 
+    @Override
+    public void setChannelHandlerContext(ChannelHandlerContext channelHandlerContext) {
+
+    }
+
     public IntegerReply subscribe(byte[][] channel) {
-        bus.regSubscriber(channelHandlerContext, channel);
+//        bus.regSubscriber(SocketChannel, channel);
         return integer(1);
     }
 
@@ -413,7 +418,7 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public IntegerReply bitop(byte[] operation0, byte[] destkey1, byte[][] key2) throws RedisException {
-        BitOp bitOp = BitOp.valueOf(new String(operation0).toUpperCase());
+        SimpleRedisServer.BitOp bitOp = SimpleRedisServer.BitOp.valueOf(new String(operation0).toUpperCase());
         int size = 0;
         for (byte[] aKey2 : key2) {
             int length = aKey2.length;
@@ -427,7 +432,7 @@ public class SimpleRedisServer implements RedisServer {
             src = _getbytes(aKey2);
             if (bytes == null) {
                 bytes = new byte[size];
-                if (bitOp == BitOp.NOT) {
+                if (bitOp == SimpleRedisServer.BitOp.NOT) {
                     if (key2.length > 1) {
                         throw new RedisException("invalid number of arguments for 'bitop' NOT operation");
                     }
@@ -1214,14 +1219,14 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public IntegerReply linsert(byte[] key0, byte[] where1, byte[] pivot2, byte[] value3) throws RedisException {
-        Where where = Where.valueOf(new String(where1).toUpperCase());
+        SimpleRedisServer.Where where = SimpleRedisServer.Where.valueOf(new String(where1).toUpperCase());
         List<BytesValue> list = _getlist(key0, true);
         BytesKey pivot = new BytesKey(pivot2);
         int i = list.indexOf(pivot);
         if (i == -1) {
             return integer(-1);
         }
-        list.add(i + (where == Where.BEFORE ? 0 : 1), new BytesKey(value3));
+        list.add(i + (where == SimpleRedisServer.Where.BEFORE ? 0 : 1), new BytesKey(value3));
         return integer(list.size());
     }
 
@@ -2213,7 +2218,7 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public Reply hset(byte[] key0, byte[] field1, byte[] value2) throws RedisException {
-        SimpleHash hash = (SimpleHash) getRedisDB().getSimpleHash();
+        SimpleHash hash = getRedisDB().getSimpleHash();
         return hash.write(new String(key0), new String(field1), new String(value2)) ? integer(1) : WRONG_TYPE;
     }
 
@@ -2658,8 +2663,8 @@ public class SimpleRedisServer implements RedisServer {
             throw new RedisException("wrong number of arguments for 'zcount' command");
         }
         ZSet zset = _getzset(key0, false);
-        Score min = _toscorerange(min1);
-        Score max = _toscorerange(max2);
+        SimpleRedisServer.Score min = _toscorerange(min1);
+        SimpleRedisServer.Score max = _toscorerange(max2);
         Iterable<ZSetEntry> entries = zset.subSet(_todouble(min1), _todouble(max2));
         int total = 0;
         for (ZSetEntry entry : entries) {
@@ -2722,7 +2727,7 @@ public class SimpleRedisServer implements RedisServer {
         }
         int position = numkeys;
         double[] weights = null;
-        Aggregate type = null;
+        SimpleRedisServer.Aggregate type = null;
         if (key2.length > position) {
             if ("weights".equals(new String(key2[position]).toLowerCase())) {
                 position++;
@@ -2737,7 +2742,7 @@ public class SimpleRedisServer implements RedisServer {
             }
             if (key2.length > position + 1) {
                 if ("aggregate".equals(new String(key2[position]).toLowerCase())) {
-                    type = Aggregate.valueOf(new String(key2[position + 1]).toUpperCase());
+                    type = SimpleRedisServer.Aggregate.valueOf(new String(key2[position + 1]).toUpperCase());
                 }
             } else if (key2.length != position) {
                 throw new RedisException("wrong number of arguments for '" + name + "' command");
@@ -2763,15 +2768,15 @@ public class SimpleRedisServer implements RedisServer {
                     destination.remove(key);
                     if (union || current != null) {
                         double newscore = entry.getScore() * (weights == null ? 1 : weights[i]);
-                        if (type == null || type == Aggregate.SUM) {
+                        if (type == null || type == SimpleRedisServer.Aggregate.SUM) {
                             if (current != null) {
                                 newscore += current.getScore();
                             }
-                        } else if (type == Aggregate.MIN) {
+                        } else if (type == SimpleRedisServer.Aggregate.MIN) {
                             if (current != null && newscore > current.getScore()) {
                                 newscore = current.getScore();
                             }
-                        } else if (type == Aggregate.MAX) {
+                        } else if (type == SimpleRedisServer.Aggregate.MAX) {
                             if (current != null && newscore < current.getScore()) {
                                 newscore = current.getScore();
                             }
@@ -2891,8 +2896,8 @@ public class SimpleRedisServer implements RedisServer {
                 throw notInteger();
             }
         }
-        Score min = _toscorerange(min1);
-        Score max = _toscorerange(max2);
+        SimpleRedisServer.Score min = _toscorerange(min1);
+        SimpleRedisServer.Score max = _toscorerange(max2);
         List<ZSetEntry> entries = zset.subSet(min.value, max.value);
         if (reverse) Collections.reverse(entries);
         int current = 0;
@@ -2907,8 +2912,8 @@ public class SimpleRedisServer implements RedisServer {
         return list;
     }
 
-    private Score _toscorerange(byte[] specifier) {
-        Score score = new Score();
+    private SimpleRedisServer.Score _toscorerange(byte[] specifier) {
+        SimpleRedisServer.Score score = new SimpleRedisServer.Score();
         String s = new String(specifier).toLowerCase();
         if (s.startsWith("(")) {
             score.inclusive = false;
@@ -3012,8 +3017,8 @@ public class SimpleRedisServer implements RedisServer {
     public IntegerReply zremrangebyscore(byte[] key0, byte[] min1, byte[] max2) throws RedisException {
         ZSet zset = _getzset(key0, false);
         if (zset.isEmpty()) return integer(0);
-        Score min = _toscorerange(min1);
-        Score max = _toscorerange(max2);
+        SimpleRedisServer.Score min = _toscorerange(min1);
+        SimpleRedisServer.Score max = _toscorerange(max2);
         List<ZSetEntry> entries = zset.subSet(min.value, max.value);
         int total = 0;
         for (ZSetEntry entry : new ArrayList<ZSetEntry>(entries)) {

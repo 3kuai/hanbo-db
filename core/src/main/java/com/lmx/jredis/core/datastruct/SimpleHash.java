@@ -28,7 +28,7 @@ public class SimpleHash extends BaseOP {
     public void init(int db) {
         try {
             store = new DataMedia(db, "hashData", storeSize);
-            ih = new IndexHelper(db, "hashIndex", storeSize / 8) {
+            /*ih = new IndexHelper(db, "hashIndex", storeSize / 8) {
                 public void wrapData(DataHelper dataHelper) {
                     if (dataHelper.getType().equals(DataTypeEnum.HASH.getDesc())) {
                         if (!kv.containsKey(dataHelper.getHash())) {
@@ -41,7 +41,7 @@ public class SimpleHash extends BaseOP {
                 }
             };
             ih.recoverIndex();
-            log.info("recover data hash size: {}", hashSize);
+            log.info("db: {},recover data kv size: {}", db, hashSize);*/
         } catch (Exception e) {
             log.error("init store file error", e);
         }

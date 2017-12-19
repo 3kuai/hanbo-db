@@ -3,7 +3,7 @@ package com.lmx.jredis.transport;
 import com.lmx.jredis.core.BusHelper;
 import com.lmx.jredis.core.RedisServer;
 import com.lmx.jredis.core.SimpleRedisServer;
-import com.lmx.jredis.core.datastruct.SimpleStructDelegate;
+import com.lmx.jredis.core.datastruct.RedisDbDelegate;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
@@ -43,10 +43,10 @@ public class NettyServer {
     @Autowired
     NettyServerHandler nettyServerHandler;
     @Autowired
-    SimpleStructDelegate delegate;
+    RedisDbDelegate delegate;
 
     @PostConstruct
-    public void start() throws InterruptedException {
+    public void start() throws Exception {
         bossGroup = new NioEventLoopGroup(ioThreadNum);
         workerGroup = new NioEventLoopGroup(ioThreadNum);
         final RedisServer redis = new SimpleRedisServer();
@@ -69,7 +69,7 @@ public class NettyServer {
                 });
         // Start the server.
         serverBootstrap.bind(host, port).sync();
-        System.err.printf("jRedis server listening on port %d \n", port);
+        System.err.printf("jRedis netty server listening on port=%d \n", port);
     }
 
 

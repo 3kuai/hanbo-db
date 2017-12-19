@@ -10,15 +10,14 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import redis.netty4.Command;
-import redis.netty4.ErrorReply;
-import redis.netty4.InlineReply;
-import redis.netty4.Reply;
+import redis.netty4.*;
 import redis.util.BytesKey;
 
+import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.channels.SocketChannel;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -34,8 +33,10 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<Command> {
     BusHelper busHelper;
     private Map<BytesKey, Wrapper> methods = new HashMap();
 
-    interface Wrapper {
+    public interface Wrapper {
         Reply execute(Command command, ChannelHandlerContext ch) throws RedisException;
+
+        Reply execute(Command command, SocketChannel ch) throws RedisException;
     }
 
     public void init(final RedisServer rs) {
@@ -64,6 +65,11 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<Command> {
                     } finally {
                         log.info("method {},cost {}ms", method.getName(), (System.currentTimeMillis() - start));
                     }
+                }
+
+                @Override
+                public Reply execute(Command command, SocketChannel ch) throws RedisException {
+                    return StatusReply.OK;
                 }
             });
         }
