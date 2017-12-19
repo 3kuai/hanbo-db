@@ -12,19 +12,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
-import sun.nio.ch.SctpStdSocketOption;
 
 import javax.annotation.PostConstruct;
 import java.net.InetSocketAddress;
-import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 
 /**
  * Created by limingxin on 2017/12/14.
@@ -41,7 +37,6 @@ public class NioServer {
     NetEventHandler netEventHandler;
     BufferUtil bufferUtil = new BufferUtil();
     SimpleNioRedisServer simpleNioRedisServer = new SimpleNioRedisServer();
-    int maxSendBuf = 1024 * 200;
 
     @Data
     static class BufferUtil {
@@ -49,11 +44,9 @@ public class NioServer {
         ByteBuf writeBuf = Unpooled.buffer(1024 * 1024 * 20);
     }
 
-
     @PostConstruct
     public void init() {
         try {
-
             simpleNioRedisServer.setDelegate(simpleStructDelegate);
             netEventHandler.initRedis(simpleNioRedisServer);
 
