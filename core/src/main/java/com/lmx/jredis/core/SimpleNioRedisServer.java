@@ -1,21 +1,17 @@
 package com.lmx.jredis.core;
 
-import com.google.common.collect.Iterators;
 import com.lmx.jredis.core.datastruct.*;
 import com.lmx.jredis.storage.DataHelper;
 import com.lmx.jredis.storage.DataTypeEnum;
 import com.lmx.jredis.storage.IndexHelper;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.util.Attribute;
-import io.netty.util.AttributeKey;
 import lombok.Setter;
 import redis.netty4.*;
 import redis.util.*;
 
 import java.lang.reflect.Field;
 import java.nio.channels.SelectionKey;
-import java.nio.channels.SocketChannel;
 import java.security.SecureRandom;
 import java.util.*;
 
@@ -30,18 +26,18 @@ import static redis.util.Encoding.numToBytes;
 public class SimpleNioRedisServer implements RedisServer {
     BusHelper bus;
     @Setter
-    SimpleStructDelegate delegate;
+    RedisDbDelegate delegate;
     //加入会话隔离db数据
     @Setter
     SelectionKey key;
     String session = "sessionIdentify";
 
-    private SimpleStructDelegate.RedisDB getRedisDB() {
+    private RedisDbDelegate.RedisDB getRedisDB() {
         Map map = ((Map) key.attachment());
         if (map == null)
             return delegate.select(0);
         else {
-            return (SimpleStructDelegate.RedisDB) map.get(session);
+            return (RedisDbDelegate.RedisDB) map.get(session);
         }
     }
 
@@ -54,7 +50,7 @@ public class SimpleNioRedisServer implements RedisServer {
      */
     @Override
     public StatusReply select(byte[] index0) throws RedisException {
-        SimpleStructDelegate.RedisDB store = delegate.select(Integer.parseInt(new String(index0)));
+        RedisDbDelegate.RedisDB store = delegate.select(Integer.parseInt(new String(index0)));
         Map sessionStore = new HashMap<>();
         key.attach(sessionStore);
         if (null == store) {
@@ -75,7 +71,7 @@ public class SimpleNioRedisServer implements RedisServer {
         return integer(1);
     }
 
-    public void initStore(BusHelper bus, SimpleStructDelegate delegate) {
+    public void initStore(BusHelper bus, RedisDbDelegate delegate) {
         this.bus = bus;
         this.delegate = delegate;
     }
@@ -504,7 +500,7 @@ public class SimpleNioRedisServer implements RedisServer {
      */
     @Override
     public BulkReply get(byte[] key0) throws RedisException {
-        SimpleStructDelegate.RedisDB db = getRedisDB();
+        RedisDbDelegate.RedisDB db = getRedisDB();
         Object o = db.getSimpleKV().read(new String(key0));
         if (o instanceof byte[]) {
             return new BulkReply((byte[]) o);
@@ -708,7 +704,7 @@ public class SimpleNioRedisServer implements RedisServer {
      */
     @Override
     public StatusReply set(byte[] key0, byte[] value1) throws RedisException {
-        SimpleStructDelegate.RedisDB kv = getRedisDB();
+        RedisDbDelegate.RedisDB kv = getRedisDB();
         return kv.getSimpleKV().write(new String(key0), new String(value1)) ? OK : WRONG_TYPE;
     }
 

@@ -4,7 +4,7 @@ import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.util.DaemonThreadFactory;
 import com.lmx.jredis.core.SimpleNioRedisServer;
-import com.lmx.jredis.core.datastruct.SimpleStructDelegate;
+import com.lmx.jredis.core.datastruct.RedisDbDelegate;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import lombok.Data;
@@ -12,16 +12,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
-import redis.netty4.RedisReplyDecoder;
+import sun.nio.ch.SctpStdSocketOption;
 
 import javax.annotation.PostConstruct;
 import java.net.InetSocketAddress;
+import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 /**
  * Created by limingxin on 2017/12/14.
@@ -31,18 +34,19 @@ import java.util.Iterator;
 @Order(2)
 public class NioServer {
     @Autowired
-    SimpleStructDelegate simpleStructDelegate;
+    RedisDbDelegate simpleStructDelegate;
     @Autowired
     RequestEventProducer requestEventProducer;
     @Autowired
     NetEventHandler netEventHandler;
     BufferUtil bufferUtil = new BufferUtil();
     SimpleNioRedisServer simpleNioRedisServer = new SimpleNioRedisServer();
+    int maxSendBuf = 1024 * 200;
 
     @Data
     static class BufferUtil {
         ByteBuffer readBuf = ByteBuffer.allocate(1024);
-        ByteBuf writeBuf = Unpooled.buffer(1024 * 1024 * 10);
+        ByteBuf writeBuf = Unpooled.buffer(1024 * 1024 * 20);
     }
 
 
@@ -82,15 +86,13 @@ public class NioServer {
         Selector selector = Selector.open();
         ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
         serverSocketChannel.configureBlocking(false);
+//        serverSocketChannel.setOption(StandardSocketOptions.SO_SNDBUF, Integer.MAX_VALUE);
         InetSocketAddress address = new InetSocketAddress("0.0.0.0", 16380);
         System.err.printf("jRedis nio server listening on port=%d \n", 16380);
         serverSocketChannel.bind(address);
         serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
-        boolean flag = false;
-        while (true) {
+        while (!Thread.interrupted()) {
             int readyChannels = selector.select();
-            if (flag)
-                break;
             if (readyChannels == 0) {
                 continue;
             }
@@ -112,11 +114,13 @@ public class NioServer {
                                 /*SocketChannel socketChannel = (SocketChannel) key.channel();
                                 socketChannel.configureBlocking(false);
                                 socketChannel.register(selector, SelectionKey.OP_WRITE);*/
+
                                 ByteBuffer resp = bufferUtil.getWriteBuf().nioBuffer();
                                 SocketChannel socketChannel = (SocketChannel) key.channel();
                                 socketChannel.write(resp);
-                                bufferUtil.getWriteBuf().clear();
                                 resp.clear();
+
+                                bufferUtil.getWriteBuf().clear();
                             }
                         } catch (Exception e) {
                             e.printStackTrace();

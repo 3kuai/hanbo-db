@@ -1,7 +1,9 @@
 package com.lmx.jredis.core;
 
-import com.google.common.collect.Iterators;
-import com.lmx.jredis.core.datastruct.*;
+import com.lmx.jredis.core.datastruct.SimpleHash;
+import com.lmx.jredis.core.datastruct.SimpleKV;
+import com.lmx.jredis.core.datastruct.SimpleList;
+import com.lmx.jredis.core.datastruct.RedisDbDelegate;
 import com.lmx.jredis.storage.DataHelper;
 import com.lmx.jredis.storage.DataTypeEnum;
 import com.lmx.jredis.storage.IndexHelper;
@@ -9,8 +11,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
-import lombok.Getter;
-import lombok.Setter;
 import redis.netty4.*;
 import redis.util.*;
 
@@ -28,7 +28,7 @@ import static redis.util.Encoding.numToBytes;
 
 public class SimpleRedisServer implements RedisServer {
     BusHelper bus;
-    SimpleStructDelegate delegate;
+    RedisDbDelegate delegate;
     //加入会话隔离db数据
     ChannelHandlerContext channelHandlerContext;
     String session = "sessionIdentify";
@@ -37,9 +37,9 @@ public class SimpleRedisServer implements RedisServer {
         this.channelHandlerContext = channelHandlerContext;
     }
 
-    private SimpleStructDelegate.RedisDB getRedisDB() {
-        SimpleStructDelegate.RedisDB baseOPMap = (SimpleStructDelegate.RedisDB) channelHandlerContext.channel().attr(AttributeKey.valueOf(session)).get();
-        return (baseOPMap == null ? delegate.select(0) : baseOPMap);
+    private RedisDbDelegate.RedisDB getRedisDB() {
+        RedisDbDelegate.RedisDB redisDB = (RedisDbDelegate.RedisDB) channelHandlerContext.channel().attr(AttributeKey.valueOf(session)).get();
+        return (redisDB == null ? delegate.select(0) : redisDB);
     }
 
     /**
@@ -51,10 +51,12 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public StatusReply select(byte[] index0) throws RedisException {
-        SimpleStructDelegate.RedisDB store = delegate.select(Integer.parseInt(new String(index0)));
+        RedisDbDelegate.RedisDB store = delegate.select(Integer.parseInt(new String(index0)));
         Attribute attribute = channelHandlerContext.channel().attr(AttributeKey.valueOf(session));
-        if (null == store)
+        if (null == store) {
+            attribute.remove();
             throw new RedisException();
+        }
         attribute.set(store);
         return StatusReply.OK;
     }
@@ -64,7 +66,7 @@ public class SimpleRedisServer implements RedisServer {
         return integer(1);
     }
 
-    public void initStore(BusHelper bus, SimpleStructDelegate delegate) {
+    public void initStore(BusHelper bus, RedisDbDelegate delegate) {
         this.bus = bus;
         this.delegate = delegate;
     }
@@ -493,7 +495,7 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public BulkReply get(byte[] key0) throws RedisException {
-        SimpleStructDelegate.RedisDB db = getRedisDB();
+        RedisDbDelegate.RedisDB db = getRedisDB();
         Object o = db.getSimpleKV().read(new String(key0));
         if (o instanceof byte[]) {
             return new BulkReply((byte[]) o);
@@ -697,7 +699,7 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public StatusReply set(byte[] key0, byte[] value1) throws RedisException {
-        SimpleStructDelegate.RedisDB kv = getRedisDB();
+        RedisDbDelegate.RedisDB kv = getRedisDB();
         return kv.getSimpleKV().write(new String(key0), new String(value1)) ? OK : WRONG_TYPE;
     }
 
@@ -2211,7 +2213,7 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public Reply hset(byte[] key0, byte[] field1, byte[] value2) throws RedisException {
-        SimpleHash hash = getRedisDB().getSimpleHash();
+        SimpleHash hash = (SimpleHash) getRedisDB().getSimpleHash();
         return hash.write(new String(key0), new String(field1), new String(value2)) ? integer(1) : WRONG_TYPE;
     }
 
