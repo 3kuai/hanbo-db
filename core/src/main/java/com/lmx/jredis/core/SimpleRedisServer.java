@@ -1,16 +1,16 @@
 package com.lmx.jredis.core;
 
+import com.lmx.jredis.core.datastruct.RedisDbDelegate;
 import com.lmx.jredis.core.datastruct.SimpleHash;
 import com.lmx.jredis.core.datastruct.SimpleKV;
 import com.lmx.jredis.core.datastruct.SimpleList;
-import com.lmx.jredis.core.datastruct.RedisDbDelegate;
+import com.lmx.jredis.core.transaction.AbstractTransactionHandler;
+import com.lmx.jredis.core.transaction.QueueEvent;
 import com.lmx.jredis.storage.DataHelper;
 import com.lmx.jredis.storage.DataTypeEnum;
 import com.lmx.jredis.storage.IndexHelper;
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.Attribute;
-import io.netty.util.AttributeKey;
 import redis.netty4.*;
 import redis.util.*;
 
@@ -26,56 +26,33 @@ import static redis.netty4.StatusReply.*;
 import static redis.util.Encoding.bytesToNum;
 import static redis.util.Encoding.numToBytes;
 
-public class SimpleRedisServer implements RedisServer {
-    BusHelper bus;
-    RedisDbDelegate delegate;
-    //加入会话隔离db数据
-    ChannelHandlerContext channelHandlerContext;
-    String session = "sessionIdentify";
-
-    public void setChannelHandlerContext(ChannelHandlerContext channelHandlerContext) {
-        this.channelHandlerContext = channelHandlerContext;
-    }
-
-    private RedisDbDelegate.RedisDB getRedisDB() {
-        RedisDbDelegate.RedisDB redisDB = (RedisDbDelegate.RedisDB) channelHandlerContext.channel().attr(AttributeKey.valueOf(session)).get();
-        return (redisDB == null ? delegate.select(0) : redisDB);
-    }
-
-    /**
-     * Change the selected database for the current connection
-     * Connection
-     *
-     * @param index0
-     * @return StatusReply
-     */
-    @Override
-    public StatusReply select(byte[] index0) throws RedisException {
-        RedisDbDelegate.RedisDB store = delegate.select(Integer.parseInt(new String(index0)));
-        Attribute attribute = channelHandlerContext.channel().attr(AttributeKey.valueOf(session));
-        if (null == store) {
-            attribute.remove();
-            throw new RedisException();
-        }
-        attribute.set(store);
-        return StatusReply.OK;
-    }
-
-    public IntegerReply subscribe(byte[][] channel) {
-        bus.regSubscriber(channelHandlerContext, channel);
-        return integer(1);
-    }
+public class SimpleRedisServer extends AbstractTransactionHandler {
 
     public void initStore(BusHelper bus, RedisDbDelegate delegate) {
         this.bus = bus;
         this.delegate = delegate;
     }
 
+    @Override
+    public StatusReply exec() throws RedisException {
+        Attribute attribute = getTxAttribute();
+        Queue queue = ((Queue) attribute.get());
+        for (Object o : queue) {
+            QueueEvent queueEvent = (QueueEvent) o;
+            RedisDbDelegate.RedisDB kv = getRedisDB();
+            if (queueEvent.getType().equals("set"))
+                kv.getSimpleKV().write(new String(queueEvent.getKey()), new String(queueEvent.getValue()));
+        }
+        queue.clear();
+        attribute.remove();
+        return StatusReply.OK;
+    }
+
     private static final StatusReply PONG = new StatusReply("PONG");
     private long started = now();
 
-    private BytesKeyObjectMap<Object> data = new BytesKeyObjectMap<Object>();
-    private BytesKeyObjectMap<Long> expires = new BytesKeyObjectMap<Long>();
+    private BytesKeyObjectMap<Object> data = new BytesKeyObjectMap<>();
+    private BytesKeyObjectMap<Long> expires = new BytesKeyObjectMap<>();
     private static int[] mask = {128, 64, 32, 16, 8, 4, 2, 1};
 
     private static RedisException invalidValue() {
@@ -699,8 +676,13 @@ public class SimpleRedisServer implements RedisServer {
      */
     @Override
     public StatusReply set(byte[] key0, byte[] value1) throws RedisException {
-        RedisDbDelegate.RedisDB kv = getRedisDB();
-        return kv.getSimpleKV().write(new String(key0), new String(value1)) ? OK : WRONG_TYPE;
+        StatusReply reply = super.set(key0, value1);
+        if (reply != null) {
+            return reply;
+        } else {
+            RedisDbDelegate.RedisDB kv = getRedisDB();
+            return kv.getSimpleKV().write(new String(key0), new String(value1)) ? OK : WRONG_TYPE;
+        }
     }
 
     /**

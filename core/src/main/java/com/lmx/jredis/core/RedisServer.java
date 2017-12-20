@@ -6,6 +6,12 @@ import redis.netty4.*;
 
 public interface RedisServer {
 
+    StatusReply multi() throws RedisException;
+
+    StatusReply exec() throws RedisException;
+
+    StatusReply discard() throws RedisException;
+
     void setChannelHandlerContext(ChannelHandlerContext channelHandlerContext);
 
     IntegerReply subscribe(byte[][] channel);

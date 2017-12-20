@@ -18,7 +18,7 @@ public class SocketServer {
     @Autowired
     RequestEventProducer requestEventProducer;
 
-    @PostConstruct
+//    @PostConstruct
     public void init() {
         new Thread(new Runnable() {
             @Override

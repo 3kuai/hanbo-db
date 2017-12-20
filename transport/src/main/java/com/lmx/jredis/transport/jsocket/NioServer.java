@@ -44,10 +44,10 @@ public class NioServer {
         ByteBuf writeBuf = Unpooled.buffer(1024 * 1024 * 20);
     }
 
-    @PostConstruct
+//    @PostConstruct
     public void init() {
         try {
-            simpleNioRedisServer.setDelegate(simpleStructDelegate);
+            simpleNioRedisServer.initStore(null, simpleStructDelegate);
             netEventHandler.initRedis(simpleNioRedisServer);
 
             Disruptor<RequestEvent> disruptor = new Disruptor(RequestEvent.FACTORY, 2 << 16, DaemonThreadFactory.INSTANCE);

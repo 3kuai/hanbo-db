@@ -1,6 +1,10 @@
 package com.lmx.jredis.core;
 
-import com.lmx.jredis.core.datastruct.*;
+import com.lmx.jredis.core.datastruct.RedisDbDelegate;
+import com.lmx.jredis.core.datastruct.SimpleHash;
+import com.lmx.jredis.core.datastruct.SimpleKV;
+import com.lmx.jredis.core.datastruct.SimpleList;
+import com.lmx.jredis.core.transaction.AbstractTransactionHandler;
 import com.lmx.jredis.storage.DataHelper;
 import com.lmx.jredis.storage.DataTypeEnum;
 import com.lmx.jredis.storage.IndexHelper;
@@ -23,16 +27,12 @@ import static redis.netty4.StatusReply.*;
 import static redis.util.Encoding.bytesToNum;
 import static redis.util.Encoding.numToBytes;
 
-public class SimpleNioRedisServer implements RedisServer {
-    BusHelper bus;
-    @Setter
-    RedisDbDelegate delegate;
+public class SimpleNioRedisServer extends AbstractTransactionHandler {
     //加入会话隔离db数据
     @Setter
     SelectionKey key;
-    String session = "sessionIdentify";
 
-    private RedisDbDelegate.RedisDB getRedisDB() {
+    public RedisDbDelegate.RedisDB getRedisDB() {
         Map map = ((Map) key.attachment());
         if (map == null)
             return delegate.select(0);
@@ -59,6 +59,11 @@ public class SimpleNioRedisServer implements RedisServer {
         }
         sessionStore.put(session, store);
         return StatusReply.OK;
+    }
+
+    @Override
+    public StatusReply exec() throws RedisException {
+        return null;
     }
 
     @Override
