@@ -1,7 +1,5 @@
 package redis.util;
 
-import redis.util.BytesKey;
-
 import java.util.HashMap;
 
 /**

@@ -30,7 +30,7 @@ import static redis.netty4.StatusReply.QUIT;
 public class NettyServerHandler extends SimpleChannelInboundHandler<Command> {
 
     @Autowired
-    BusHelper busHelper;
+    private BusHelper busHelper;
     private Map<BytesKey, Wrapper> methods = new HashMap();
 
     public interface Wrapper {
@@ -107,8 +107,13 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<Command> {
             if (reply == null) {
                 reply = NYI_REPLY;
             }
-            ctx.writeAndFlush(reply);
+            ctx.write(reply);
         }
+    }
+
+    @Override
+    public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
+        ctx.flush();
     }
 
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {

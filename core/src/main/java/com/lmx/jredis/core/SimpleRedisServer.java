@@ -28,11 +28,6 @@ import static redis.util.Encoding.numToBytes;
 
 public class SimpleRedisServer extends AbstractTransactionHandler {
 
-    public void initStore(BusHelper bus, RedisDbDelegate delegate) {
-        this.bus = bus;
-        this.delegate = delegate;
-    }
-
     @Override
     public StatusReply exec() throws RedisException {
         Attribute attribute = getTxAttribute();
@@ -44,7 +39,7 @@ public class SimpleRedisServer extends AbstractTransactionHandler {
                 kv.getSimpleKV().write(new String(queueEvent.getKey()), new String(queueEvent.getValue()));
         }
         queue.clear();
-        attribute.remove();
+        attribute.set(null);
         return StatusReply.OK;
     }
 
@@ -53,6 +48,7 @@ public class SimpleRedisServer extends AbstractTransactionHandler {
 
     private BytesKeyObjectMap<Object> data = new BytesKeyObjectMap<>();
     private BytesKeyObjectMap<Long> expires = new BytesKeyObjectMap<>();
+
     private static int[] mask = {128, 64, 32, 16, 8, 4, 2, 1};
 
     private static RedisException invalidValue() {

@@ -44,7 +44,7 @@ public abstract class AbstractTransactionHandler implements RedisServer {
     public StatusReply discard() throws RedisException {
         Attribute attribute = getTxAttribute();
         ((Queue) attribute.get()).clear();
-        attribute.remove();
+        attribute.set(null);
         return StatusReply.OK;
     }
 
@@ -69,7 +69,7 @@ public abstract class AbstractTransactionHandler implements RedisServer {
         RedisDbDelegate.RedisDB store = delegate.select(Integer.parseInt(new String(index0)));
         Attribute attribute = channelHandlerContext.channel().attr(AttributeKey.valueOf(session));
         if (null == store) {
-            attribute.remove();
+            attribute.set(null);
             throw new RedisException();
         }
         attribute.set(store);
@@ -89,5 +89,10 @@ public abstract class AbstractTransactionHandler implements RedisServer {
         } else {
             return null;
         }
+    }
+
+    public void initStore(BusHelper bus, RedisDbDelegate delegate) {
+        this.bus = bus;
+        this.delegate = delegate;
     }
 }

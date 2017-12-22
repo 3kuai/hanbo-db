@@ -11,5 +11,11 @@
 
     <artifactId>storage</artifactId>
 
-
+    <dependencies>
+        <dependency>
+            <groupId>com.lmx.jredis</groupId>
+            <artifactId>protol</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
+    </dependencies>
 </project>

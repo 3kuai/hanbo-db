@@ -3,6 +3,7 @@ package com.lmx.jredis.storage;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import redis.util.BytesKeyObjectMap;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,10 +19,6 @@ public abstract class IndexHelper extends BaseMedia {
     @Getter
     public Map<String, Object> kv = new ConcurrentHashMap<>();
     public Map<String, Long> expire = new ConcurrentHashMap<>();
-
-    public IndexHelper(String fileName, int size) throws Exception {
-        super(fileName, size);
-    }
 
     public IndexHelper(int db, String fileName, int size) throws Exception {
         super(db, fileName, size);
