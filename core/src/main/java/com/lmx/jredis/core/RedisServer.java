@@ -6,16 +6,51 @@ import redis.netty4.*;
 
 public interface RedisServer {
 
+    /**
+     * start a transaction
+     *
+     * @return
+     * @throws RedisException
+     */
     StatusReply multi() throws RedisException;
 
+    /**
+     * exec a transaction
+     *
+     * @return
+     * @throws RedisException
+     */
     StatusReply exec() throws RedisException;
 
+    /**
+     * discard a transaction
+     *
+     * @return
+     * @throws RedisException
+     */
     StatusReply discard() throws RedisException;
 
+    /**
+     * set Channel context
+     *
+     * @param channelHandlerContext
+     */
     void setChannelHandlerContext(ChannelHandlerContext channelHandlerContext);
 
+    /**
+     * subscribe a channel
+     *
+     * @param channel
+     * @return
+     */
     IntegerReply subscribe(byte[][] channel);
 
+    /**
+     * init storage/bus
+     *
+     * @param bus
+     * @param delegate
+     */
     void initStore(BusHelper bus, RedisDbDelegate delegate);
 
     /**
