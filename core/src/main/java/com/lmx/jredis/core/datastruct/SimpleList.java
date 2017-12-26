@@ -16,7 +16,6 @@ import java.util.List;
 public class SimpleList extends BaseOP {
 
     int storeSize;
-    int listSize;
 
     SimpleList(int storeSize) {
         this.storeSize = storeSize;
@@ -25,20 +24,6 @@ public class SimpleList extends BaseOP {
     public void init(int db) {
         try {
             store = new DataMedia(db, "listData", storeSize);
-            /*ih = new IndexHelper(db, "listIndex", storeSize / 8) {
-                public void wrapData(DataHelper dataHelper) {
-                    if (dataHelper.getType().equals(DataTypeEnum.LIST.getDesc())) {
-                        if (!kv.containsKey(dataHelper.getKey())) {
-                            kv.put(dataHelper.getKey(), new LinkedList<DataHelper>());
-                            expire.put(dataHelper.getKey(), dataHelper.getExpire());
-                            listSize++;
-                        }
-                        ((List) kv.get(dataHelper.getKey())).add(dataHelper);
-                    }
-                }
-            };
-            ih.recoverIndex();
-            log.info("db: {},recover data kv size: {}", db, listSize);*/
         } catch (Exception e) {
             log.error("init store file error", e);
         }
@@ -73,8 +58,7 @@ public class SimpleList extends BaseOP {
             List<byte[]> resp = new ArrayList<>();
             long start = System.currentTimeMillis();
             for (Object l : (List) (ih.kv).get(key)) {
-                if (l instanceof DataHelper)
-                    resp.add(store.get((DataHelper) l));
+                resp.add(store.get((DataHelper) l));
             }
             resp = resp.subList(startIdx, endIdx == -1 ? resp.size() : endIdx);
             log.debug("key={},value={} cost={}ms", key, resp, (System.currentTimeMillis() - start));

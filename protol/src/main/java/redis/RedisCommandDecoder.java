@@ -15,13 +15,12 @@ import static redis.netty4.RedisReplyDecoder.readLong;
  */
 public class RedisCommandDecoder extends ReplayingDecoder<Void> {
     private byte[][] bytes;
-    private int arguments = 0;
 
     @Override
     public void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
         if (bytes != null) {
             int numArgs = bytes.length;
-            for (int i = arguments; i < numArgs; i++) {
+            for (int i = 0; i < numArgs; i++) {
                 if (in.readByte() == '$') {
                     long l = readLong(in);
                     if (l > Integer.MAX_VALUE) {
@@ -34,7 +33,6 @@ public class RedisCommandDecoder extends ReplayingDecoder<Void> {
                         throw new Exception("Argument doesn't end in CRLF");
                     }
                     in.skipBytes(2);
-                    arguments++;
                     checkpoint();
                 } else {
                     throw new IOException("Unexpected character");
@@ -44,7 +42,6 @@ public class RedisCommandDecoder extends ReplayingDecoder<Void> {
                 out.add(new Command(bytes));
             } finally {
                 bytes = null;
-                arguments = 0;
             }
         } else if (in.readByte() == '*') {
             long l = readLong(in);
@@ -61,7 +58,7 @@ public class RedisCommandDecoder extends ReplayingDecoder<Void> {
         } else {
             // Go backwards one
             in.readerIndex(in.readerIndex() - 1);
-            // Read command -- can't be interupted
+            // Read command -- can't be interrupted
             byte[][] b = new byte[1][];
             b[0] = in.readBytes(in.bytesBefore((byte) '\r')).array();
             in.skipBytes(2);

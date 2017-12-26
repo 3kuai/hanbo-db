@@ -74,7 +74,7 @@ public class RedisDbDelegate {
                             ((List) kv.get(dataHelper.getKey())).add(dataHelper);
                         } else if (dataHelper.getType().equals(DataTypeEnum.HASH.getDesc())) {
                             if (!kv.containsKey(dataHelper.getHash())) {
-                                kv.put(dataHelper.getHash(), new HashMap<String, DataHelper>());
+                                kv.put(dataHelper.getHash(), new HashMap<>());
                                 expire.put(dataHelper.getKey(), dataHelper.getExpire());
                                 lastKvSize++;
                             }

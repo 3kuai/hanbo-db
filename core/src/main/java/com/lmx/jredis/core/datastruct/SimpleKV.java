@@ -16,7 +16,6 @@ import java.nio.ByteBuffer;
 @Slf4j
 public class SimpleKV extends BaseOP {
     int storeSize;
-    int kvSize;
 
     SimpleKV(int storeSize) {
         this.storeSize = storeSize;
@@ -25,19 +24,6 @@ public class SimpleKV extends BaseOP {
     public void init(int db) {
         try {
             store = new DataMedia(db, "valueData", storeSize);
-/*            ih = new IndexHelper(db, "keyIndex", storeSize / 2) {
-                public void wrapData(DataHelper dataHelper) {
-                    if (dataHelper.getType().equals(DataTypeEnum.KV.getDesc())) {
-                        if (!kv.containsKey(dataHelper.getKey())) {
-                            kv.put(dataHelper.getKey(), dataHelper);
-                            expire.put(dataHelper.getKey(), dataHelper.getExpire());
-                            kvSize++;
-                        }
-                    }
-                }
-            };
-            ih.recoverIndex();
-            log.info("db: {},recover data kv size: {}", db, kvSize);*/
         } catch (Exception e) {
             log.error("init store file error", e);
         }

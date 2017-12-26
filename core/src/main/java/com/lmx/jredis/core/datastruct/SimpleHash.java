@@ -19,7 +19,6 @@ import java.util.Map;
 public class SimpleHash extends BaseOP {
 
     int storeSize;
-    int hashSize;
 
     SimpleHash(int storeSize) {
         this.storeSize = storeSize;
@@ -28,20 +27,6 @@ public class SimpleHash extends BaseOP {
     public void init(int db) {
         try {
             store = new DataMedia(db, "hashData", storeSize);
-            /*ih = new IndexHelper(db, "hashIndex", storeSize / 8) {
-                public void wrapData(DataHelper dataHelper) {
-                    if (dataHelper.getType().equals(DataTypeEnum.HASH.getDesc())) {
-                        if (!kv.containsKey(dataHelper.getHash())) {
-                            kv.put(dataHelper.getHash(), new HashMap<String, DataHelper>());
-                            expire.put(dataHelper.getKey(), dataHelper.getExpire());
-                            hashSize++;
-                        }
-                        ((Map) kv.get(dataHelper.getHash())).put(dataHelper.getKey(), dataHelper);
-                    }
-                }
-            };
-            ih.recoverIndex();
-            log.info("db: {},recover data kv size: {}", db, hashSize);*/
         } catch (Exception e) {
             log.error("init store file error", e);
         }
@@ -52,11 +37,23 @@ public class SimpleHash extends BaseOP {
             if (super.write(field, value)) {
                 Map<String, DataHelper> map = ((Map<String, DataHelper>) ih.type(hash));
                 if (!CollectionUtils.isEmpty(map)) {
-                    for (Map.Entry<String, DataHelper> e : map.entrySet()) {
-                        if (e.getKey().equals(field)) {
-                            store.update(e.getValue(), value.getBytes(Charsets.UTF_8));
-                            ih.updateIndex(e.getValue());
-                        }
+                    if (map.containsKey(field)) {
+                        store.update(map.get(field), value.getBytes(Charsets.UTF_8));
+                        ih.updateIndex(map.get(field));
+                        return true;
+                    } else {
+                        ByteBuffer b = ByteBuffer.allocateDirect(128);
+                        int length = value.getBytes().length;
+                        b.putInt(length);
+                        b.put(value.getBytes(BaseMedia.CHARSET));
+                        b.flip();
+                        DataHelper dh = store.add(b);
+                        dh.setHash(hash);
+                        dh.setType(DataTypeEnum.HASH.getDesc());
+                        dh.setKey(field);
+                        dh.setLength(length);
+                        ih.add(dh);
+                        return true;
                     }
                 }
                 ByteBuffer b = ByteBuffer.allocateDirect(128);

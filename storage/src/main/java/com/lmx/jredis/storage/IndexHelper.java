@@ -3,10 +3,11 @@ package com.lmx.jredis.storage;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import redis.util.BytesKeyObjectMap;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 索引(key)存储区
@@ -16,9 +17,10 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 @EqualsAndHashCode(callSuper = false)
 public abstract class IndexHelper extends BaseMedia {
+    static public final int maxCacheLimit = Integer.MAX_VALUE;
     @Getter
-    public Map<String, Object> kv = new ConcurrentHashMap<>();
-    public Map<String, Long> expire = new ConcurrentHashMap<>();
+    public Map<String, Object> kv = new LRUCache<>(maxCacheLimit);
+    public Map<String, Long> expire = new LRUCache<>(maxCacheLimit);
 
     public IndexHelper(int db, String fileName, int size) throws Exception {
         super(db, fileName, size);
@@ -51,9 +53,9 @@ public abstract class IndexHelper extends BaseMedia {
         kv.remove(key);
     }
 
-    public int add(DataHelper dh) throws Exception {
+    public void add(DataHelper dh) throws Exception {
         if (dh == null)
-            return -1;
+            return;
         int indexPos;
         if ((indexPos = buffer.getInt()) != 0)
             buffer.position(indexPos);
@@ -94,15 +96,12 @@ public abstract class IndexHelper extends BaseMedia {
                 kv.put(key, new LinkedList<DataHelper>());
             }
             ((List) kv.get(key)).add(dh);
-            return ((List) kv.get(key)).size();
         } else if (dh.getType().equals(DataTypeEnum.HASH.getDesc())) {
             if (!kv.containsKey(dh.getHash())) {
-                kv.put(dh.getHash(), new HashMap<String, DataHelper>());
+                kv.put(dh.getHash(), new HashMap<>());
             }
             ((Map) kv.get(dh.getHash())).put(key, dh);
-            return ((Map) kv.get(dh.getHash())).size();
         }
-        return 0;
     }
 
     public void updateIndex(DataHelper dh) {

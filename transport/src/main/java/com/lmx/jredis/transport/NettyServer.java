@@ -30,8 +30,6 @@ public class NettyServer {
 
     @Value("${rpcServer.host:0.0.0.0}")
     String host;
-    @Value("${rpcServer.ioThreadNum:1}")
-    int ioThreadNum;
     @Value("${rpcServer.backlog:1024}")
     int backlog;
     @Value("${rpcServer.port:16990}")
@@ -47,8 +45,8 @@ public class NettyServer {
 
     @PostConstruct
     public void start() throws Exception {
-        bossGroup = new NioEventLoopGroup(ioThreadNum);
-        workerGroup = new NioEventLoopGroup(ioThreadNum);
+        bossGroup = new NioEventLoopGroup(1);
+        workerGroup = new NioEventLoopGroup(1);
         final RedisServer redis = new SimpleRedisServer();
         nettyServerHandler.init(redis);
         redis.initStore(busHelper, delegate);
