@@ -8,6 +8,8 @@ redis of java implement
     3.hset hget hgetall    
     4.pub sub    
     5.keys expire del
+    6.multi exec discard
+    ....
     
 ## architecture
 ### storage
