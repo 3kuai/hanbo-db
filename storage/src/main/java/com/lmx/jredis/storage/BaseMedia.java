@@ -24,7 +24,7 @@ public class BaseMedia {
     final char NORMAL = '1';
     final char DELETE = '0';
     int maxUnit = 1024;
-    static int dbLength = 4;
+    static int dbLength = 16;
 
     static {
         file = new File(BASE_DIR);

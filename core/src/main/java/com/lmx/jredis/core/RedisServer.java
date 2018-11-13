@@ -30,6 +30,8 @@ public interface RedisServer {
      */
     StatusReply discard() throws RedisException;
 
+    MultiBulkReply scan(byte[] index0) throws RedisException;
+
     /**
      * set Channel context
      *

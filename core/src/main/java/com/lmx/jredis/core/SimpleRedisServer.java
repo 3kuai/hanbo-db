@@ -43,6 +43,20 @@ public class SimpleRedisServer extends AbstractTransactionHandler {
         return StatusReply.OK;
     }
 
+    @Override
+    public MultiBulkReply scan(byte[] index0) throws RedisException {
+        this.select(index0);
+        List<Reply<ByteBuf>> replies = new ArrayList<Reply<ByteBuf>>();
+        IndexHelper indexHelper = getRedisDB().getIndexHelper();
+        Iterator<String> it = indexHelper.getKv().keySet().iterator();
+        while (it.hasNext()) {
+            String key = it.next();
+            byte[] bytes = key.getBytes();
+            replies.add(new BulkReply(bytes));
+        }
+        return new MultiBulkReply(replies.toArray(new Reply[replies.size()]));
+    }
+
     private static final StatusReply PONG = new StatusReply("PONG");
     private long started = now();
 
