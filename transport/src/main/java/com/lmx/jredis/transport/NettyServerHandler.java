@@ -108,6 +108,13 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<Command> {
         ctx.flush();
     }
 
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        super.channelInactive(ctx);
+        busHelper.unSubscriber(ctx);
+        ctx.close();
+    }
+
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         busHelper.unSubscriber(ctx);
         ctx.close();
