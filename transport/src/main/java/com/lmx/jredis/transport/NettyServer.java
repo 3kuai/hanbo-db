@@ -29,19 +29,19 @@ import javax.annotation.PreDestroy;
 public class NettyServer {
 
     @Value("${rpcServer.host:0.0.0.0}")
-    String host;
+    private String host;
     @Value("${rpcServer.backlog:1024}")
-    int backlog;
+    private int backlog;
     @Value("${rpcServer.port:16990}")
-    int port;
-    EventLoopGroup bossGroup;
-    EventLoopGroup workerGroup;
+    private int port;
+    private EventLoopGroup bossGroup;
+    private EventLoopGroup workerGroup;
     @Autowired
-    BusHelper busHelper;
+    private BusHelper busHelper;
     @Autowired
-    NettyServerHandler nettyServerHandler;
+    private NettyServerHandler nettyServerHandler;
     @Autowired
-    RedisDbDelegate delegate;
+    private RedisDbDelegate delegate;
 
     @PostConstruct
     public void start() throws Exception {

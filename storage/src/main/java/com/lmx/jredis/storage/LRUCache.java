@@ -11,7 +11,7 @@ public class LRUCache<K, V> extends LinkedHashMap<K, V> {
     private final int MAX_CACHE_SIZE;
 
     public LRUCache(int cacheSize) {
-        super(16, 0.95f, true);
+        super(1 << 20, 0.95f, true);
         MAX_CACHE_SIZE = cacheSize;
     }
 

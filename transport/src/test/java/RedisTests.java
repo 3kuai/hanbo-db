@@ -40,7 +40,7 @@ public class RedisTests {
 
     @Test
     public void test() throws Exception {
-        for (int i = 0; i < 100; ++i) {
+        for (int i = 0; i < 1000*10; ++i) {
             es.execute(new Runnable() {
                 @Override
                 public void run() {
@@ -55,7 +55,10 @@ public class RedisTests {
                 }
             });
         }
-        es.awaitTermination(10, TimeUnit.SECONDS);
+        es.shutdown();
+        while(!es.awaitTermination(10, TimeUnit.SECONDS)){
+            System.out.println("....");
+        }
     }
 
 }

@@ -18,7 +18,7 @@ public class DataMedia extends BaseMedia {
     }
 
     public DataHelper add(ByteBuffer b) throws Exception {
-        int pos = 0;
+        int pos;
         if ((pos = buffer.getInt()) != 0)
             buffer.position(pos);
         else

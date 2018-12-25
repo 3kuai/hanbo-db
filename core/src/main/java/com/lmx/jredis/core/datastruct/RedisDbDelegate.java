@@ -84,7 +84,7 @@ public class RedisDbDelegate {
                 };
                 indexHelper.recoverIndex();
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error("", e);
             }
 
 

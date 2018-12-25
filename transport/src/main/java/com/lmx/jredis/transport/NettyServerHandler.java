@@ -13,8 +13,6 @@ import org.springframework.stereotype.Component;
 import redis.netty4.*;
 import redis.util.BytesKey;
 
-import java.io.OutputStream;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.channels.SocketChannel;
@@ -35,8 +33,6 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<Command> {
 
     public interface Wrapper {
         Reply execute(Command command, ChannelHandlerContext ch) throws RedisException;
-
-        Reply execute(Command command, SocketChannel ch) throws RedisException;
     }
 
     public void init(final RedisServer rs) {
@@ -67,10 +63,6 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<Command> {
                     }
                 }
 
-                @Override
-                public Reply execute(Command command, SocketChannel ch) throws RedisException {
-                    return StatusReply.OK;
-                }
             });
         }
     }
@@ -117,7 +109,6 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<Command> {
     }
 
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-//        log.error("", cause);
         busHelper.unSubscriber(ctx);
         ctx.close();
     }
