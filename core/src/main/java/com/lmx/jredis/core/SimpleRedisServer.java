@@ -5,12 +5,14 @@ import com.lmx.jredis.core.datastruct.SimpleHash;
 import com.lmx.jredis.core.datastruct.SimpleKV;
 import com.lmx.jredis.core.datastruct.SimpleList;
 import com.lmx.jredis.core.transaction.AbstractTransactionHandler;
+import com.lmx.jredis.core.transaction.BlockingQueueHelper;
 import com.lmx.jredis.core.transaction.QueueEvent;
 import com.lmx.jredis.storage.DataHelper;
 import com.lmx.jredis.storage.DataTypeEnum;
 import com.lmx.jredis.storage.IndexHelper;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.Attribute;
+import io.netty.util.AttributeKey;
 import redis.netty4.*;
 import redis.util.*;
 
@@ -27,6 +29,7 @@ import static redis.util.Encoding.bytesToNum;
 import static redis.util.Encoding.numToBytes;
 
 public class SimpleRedisServer extends AbstractTransactionHandler {
+    public static AttributeKey attributeKey = AttributeKey.newInstance("popPosition");
 
     @Override
     public StatusReply exec() throws RedisException {
@@ -1142,8 +1145,22 @@ public class SimpleRedisServer extends AbstractTransactionHandler {
      */
     @Override
     public MultiBulkReply blpop(byte[][] key0) throws RedisException {
-        // TODO: Blocking
-        return null;
+        SimpleList list = getRedisDB().getSimpleList();
+        String k = new String(key0[0]);
+        if (list.getIh().type(k) != null &&
+                list.getIh().type(k) instanceof List && ((List) list.getIh().type(k)).size() > 0) {
+            byte[] val = list.popHead(k);
+            Reply[] replies = new BulkReply[]{new BulkReply(key0[0]), new BulkReply(val)};
+            return new MultiBulkReply(replies);
+        } else if (list.getIh().type(k) != null &&
+                !(list.getIh().type(k) instanceof List)) {
+            return new MultiBulkReply(new Reply[]{WRONG_TYPE});
+        } else {
+            channelHandlerContext.channel().attr(attributeKey).set(1);
+            // Blocking until the list only has a element
+            BlockingQueueHelper.getInstance().regListener(channelHandlerContext, k, list);
+            return MultiBulkReply.BLOCKING_QUEUE;
+        }
     }
 
     /**
@@ -1155,8 +1172,22 @@ public class SimpleRedisServer extends AbstractTransactionHandler {
      */
     @Override
     public MultiBulkReply brpop(byte[][] key0) throws RedisException {
-        // TODO: Blocking
-        return null;
+        SimpleList list = getRedisDB().getSimpleList();
+        String k = new String(key0[0]);
+        if (list.getIh().type(k) != null &&
+                list.getIh().type(k) instanceof List && ((List) list.getIh().type(k)).size() > 0) {
+            byte[] val = list.popHead(k);
+            Reply[] replies = new BulkReply[]{new BulkReply(key0[0]), new BulkReply(val)};
+            return new MultiBulkReply(replies);
+        } else if (list.getIh().type(k) != null &&
+                !(list.getIh().type(k) instanceof List)) {
+            return MultiBulkReply.EMPTY;
+        } else {
+            channelHandlerContext.channel().attr(attributeKey).set(0);
+            // Blocking until the list only has a element
+            BlockingQueueHelper.getInstance().regListener(channelHandlerContext, k, list);
+            return MultiBulkReply.BLOCKING_QUEUE;
+        }
     }
 
     /**
@@ -1611,7 +1642,8 @@ public class SimpleRedisServer extends AbstractTransactionHandler {
      * @return StatusReply
      */
     @Override
-    public StatusReply migrate(byte[] host0, byte[] port1, byte[] key2, byte[] destination_db3, byte[] timeout4) throws RedisException {
+    public StatusReply migrate(byte[] host0, byte[] port1, byte[] key2, byte[] destination_db3, byte[] timeout4) throws
+            RedisException {
         // TODO: Multiserver
         return null;
     }

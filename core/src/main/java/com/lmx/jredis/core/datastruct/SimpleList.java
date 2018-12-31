@@ -1,5 +1,6 @@
 package com.lmx.jredis.core.datastruct;
 
+import com.lmx.jredis.core.transaction.BlockingQueueHelper;
 import com.lmx.jredis.storage.*;
 import lombok.extern.slf4j.Slf4j;
 
@@ -42,6 +43,7 @@ public class SimpleList extends BaseOP {
                 dh.setKey(key);
                 dh.setLength(length);
                 ih.add(dh);
+                BlockingQueueHelper.getInstance().notifyListener(key);
                 return true;
             }
         } catch (Exception e) {
@@ -80,5 +82,38 @@ public class SimpleList extends BaseOP {
             ih.remove(d);
             store.remove(d);
         }
+    }
+
+    /**
+     * pop the head element in queue
+     *
+     * @param key
+     */
+    public byte[] popHead(String key) {
+        return pop(key, 1);
+    }
+
+    /**
+     * pop the tail element in queue
+     *
+     * @param key
+     */
+    public byte[] popTail(String key) {
+        return pop(key, 0);
+    }
+
+    public byte[] pop(String key, int point) {
+        List<DataHelper> list = (List<DataHelper>) ih.type(key);
+        DataHelper headData = null;
+        if (list.size() > 0) {
+            if (point == 0)
+                headData = list.remove(list.size() - 1);
+            else if (point == 1)
+                headData = list.remove(0);
+        }
+        byte[] val = store.get(headData);
+        store.remove(headData);
+        ih.remove(headData);
+        return val;
     }
 }

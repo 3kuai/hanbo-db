@@ -4,6 +4,8 @@ import com.google.common.base.Charsets;
 import com.lmx.jredis.core.BusHelper;
 import com.lmx.jredis.core.RedisException;
 import com.lmx.jredis.core.RedisServer;
+import com.lmx.jredis.core.transaction.BlockingQueueHelper;
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -99,6 +101,15 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<Command> {
             if (reply == null) {
                 reply = NYI_REPLY;
             }
+            if (reply instanceof MultiBulkReply) {
+                MultiBulkReply multiBulkReply = (MultiBulkReply) reply;
+                if (multiBulkReply.data().length > 0) {
+                    ByteBuf byteBuf = (ByteBuf) multiBulkReply.data()[0].data();
+                    if (new String(byteBuf.array()).equals("blockingQueue")) {
+                        return;
+                    }
+                }
+            }
             ctx.write(reply);
         }
     }
@@ -112,11 +123,13 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<Command> {
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         super.channelInactive(ctx);
         busHelper.unSubscriber(ctx);
+        BlockingQueueHelper.getInstance().remListener(ctx);
         ctx.close();
     }
 
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         busHelper.unSubscriber(ctx);
+        BlockingQueueHelper.getInstance().remListener(ctx);
         ctx.close();
     }
 }
