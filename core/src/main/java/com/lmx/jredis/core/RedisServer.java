@@ -1,10 +1,13 @@
 package com.lmx.jredis.core;
 
-import com.lmx.jredis.core.datastruct.*;
+import com.lmx.jredis.core.datastruct.RedisDbDelegate;
 import io.netty.channel.ChannelHandlerContext;
 import redis.netty4.*;
 
 public interface RedisServer {
+    boolean hasOpenTx();
+
+    Reply handlerTxOp(byte[] cmd, Object[] objects);
 
     /**
      * start a transaction
@@ -1393,4 +1396,5 @@ public interface RedisServer {
      * @return IntegerReply
      */
     IntegerReply zunionstore(byte[] destination0, byte[] numkeys1, byte[][] key2) throws RedisException;
+
 }

@@ -6,12 +6,10 @@ import com.lmx.jredis.core.datastruct.SimpleKV;
 import com.lmx.jredis.core.datastruct.SimpleList;
 import com.lmx.jredis.core.transaction.AbstractTransactionHandler;
 import com.lmx.jredis.core.transaction.BlockingQueueHelper;
-import com.lmx.jredis.core.transaction.QueueEvent;
 import com.lmx.jredis.storage.DataHelper;
 import com.lmx.jredis.storage.DataTypeEnum;
 import com.lmx.jredis.storage.IndexHelper;
 import io.netty.buffer.ByteBuf;
-import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
 import redis.netty4.*;
 import redis.util.*;
@@ -30,21 +28,6 @@ import static redis.util.Encoding.numToBytes;
 
 public class SimpleRedisServer extends AbstractTransactionHandler {
     public static AttributeKey attributeKey = AttributeKey.newInstance("popPosition");
-
-    @Override
-    public StatusReply exec() throws RedisException {
-        Attribute attribute = getTxAttribute();
-        Queue queue = ((Queue) attribute.get());
-        for (Object o : queue) {
-            QueueEvent queueEvent = (QueueEvent) o;
-            RedisDbDelegate.RedisDB kv = getRedisDB();
-            if (queueEvent.getType().equals("set"))
-                kv.getSimpleKV().write(new String(queueEvent.getKey()), new String(queueEvent.getValue()));
-        }
-        queue.clear();
-        attribute.set(null);
-        return StatusReply.OK;
-    }
 
     @Override
     public MultiBulkReply scan(byte[] index0) throws RedisException {
@@ -689,13 +672,8 @@ public class SimpleRedisServer extends AbstractTransactionHandler {
      */
     @Override
     public StatusReply set(byte[] key0, byte[] value1) throws RedisException {
-        StatusReply reply = super.set(key0, value1);
-        if (reply != null) {
-            return reply;
-        } else {
-            RedisDbDelegate.RedisDB kv = getRedisDB();
-            return kv.getSimpleKV().write(new String(key0), new String(value1)) ? OK : WRONG_TYPE;
-        }
+        RedisDbDelegate.RedisDB kv = getRedisDB();
+        return kv.getSimpleKV().write(new String(key0), new String(value1)) ? OK : WRONG_TYPE;
     }
 
     /**
@@ -1176,7 +1154,7 @@ public class SimpleRedisServer extends AbstractTransactionHandler {
         String k = new String(key0[0]);
         if (list.getIh().type(k) != null &&
                 list.getIh().type(k) instanceof List && ((List) list.getIh().type(k)).size() > 0) {
-            byte[] val = list.popHead(k);
+            byte[] val = list.popTail(k);
             Reply[] replies = new BulkReply[]{new BulkReply(key0[0]), new BulkReply(val)};
             return new MultiBulkReply(replies);
         } else if (list.getIh().type(k) != null &&

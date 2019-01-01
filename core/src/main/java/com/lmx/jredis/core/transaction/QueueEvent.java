@@ -9,6 +9,6 @@ import lombok.Data;
 @Data
 @Builder
 public class QueueEvent {
-    String type = "set";
-    byte[] key, value;
+    private String type = "set";
+    private byte[] key, value;
 }
