@@ -2,8 +2,8 @@ package com.lmx.jredis.core.transaction;
 
 import com.lmx.jredis.core.BusHelper;
 import com.lmx.jredis.core.RedisException;
-import com.lmx.jredis.core.RedisInvoker;
-import com.lmx.jredis.core.RedisServer;
+import com.lmx.jredis.core.RedisCommandInvoker;
+import com.lmx.jredis.core.RedisCommandProcessor;
 import com.lmx.jredis.core.datastruct.RedisDbDelegate;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.Attribute;
@@ -27,7 +27,7 @@ import static redis.netty4.IntegerReply.integer;
  * Created by limingxin on 2017/12/20.
  */
 @Slf4j
-public abstract class AbstractTransactionHandler implements RedisServer {
+public abstract class AbstractTransactionHandler implements RedisCommandProcessor {
     protected BusHelper bus;
     protected RedisDbDelegate delegate;
     protected ChannelHandlerContext channelHandlerContext;
@@ -70,7 +70,7 @@ public abstract class AbstractTransactionHandler implements RedisServer {
         Attribute attribute = getTxAttribute();
         Queue queue = ((Queue) attribute.get());
         for (Object o : queue) {
-            RedisInvoker.handlerEvent(channelHandlerContext, (Command) o);
+            RedisCommandInvoker.handlerEvent(channelHandlerContext, (Command) o);
         }
         queue.clear();
         attribute.set(null);

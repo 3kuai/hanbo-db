@@ -1,7 +1,7 @@
 package com.lmx.jredis.transport;
 
 import com.lmx.jredis.core.BusHelper;
-import com.lmx.jredis.core.RedisInvoker;
+import com.lmx.jredis.core.RedisCommandInvoker;
 import com.lmx.jredis.core.transaction.BlockingQueueHelper;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
@@ -27,7 +27,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<Command> {
     private BusHelper busHelper;
 
     @Autowired
-    private RedisInvoker invoker;
+    private RedisCommandInvoker invoker;
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, Command msg) throws Exception {

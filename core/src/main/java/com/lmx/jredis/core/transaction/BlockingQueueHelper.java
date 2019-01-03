@@ -1,7 +1,7 @@
 package com.lmx.jredis.core.transaction;
 
 import com.google.common.collect.Lists;
-import com.lmx.jredis.core.SimpleRedisServer;
+import com.lmx.jredis.core.RedisCommandProcessorImpl;
 import com.lmx.jredis.core.datastruct.SimpleList;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.Attribute;
@@ -72,7 +72,7 @@ public class BlockingQueueHelper {
             SimpleList v = routers.get(key);
             //random assign a channel to receive data
             int randomVal = new Random().nextInt(contextList.size());
-            Attribute attribute = contextList.get(randomVal).channel().attr(SimpleRedisServer.attributeKey);
+            Attribute attribute = contextList.get(randomVal).channel().attr(RedisCommandProcessorImpl.attributeKey);
             int position = (int) attribute.get();
             attribute.set(null);
             byte[] list_ = v.pop(key, position);

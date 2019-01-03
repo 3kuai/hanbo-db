@@ -26,7 +26,7 @@ import static redis.netty4.StatusReply.*;
 import static redis.util.Encoding.bytesToNum;
 import static redis.util.Encoding.numToBytes;
 
-public class SimpleRedisServer extends AbstractTransactionHandler {
+public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
     public static AttributeKey attributeKey = AttributeKey.newInstance("popPosition");
 
     @Override

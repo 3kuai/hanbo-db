@@ -4,7 +4,7 @@ import com.lmx.jredis.core.datastruct.RedisDbDelegate;
 import io.netty.channel.ChannelHandlerContext;
 import redis.netty4.*;
 
-public interface RedisServer {
+public interface RedisCommandProcessor {
     boolean hasOpenTx();
 
     Reply handlerTxOp(Command command) throws RedisException;

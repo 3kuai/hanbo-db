@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Slf4j
 @Component
-public class RedisInvoker {
+public class RedisCommandInvoker {
     private static final byte LOWER_DIFF = 'a' - 'A';
 
     public static final Map<BytesKey, Wrapper> methods = new ConcurrentHashMap<>();
@@ -29,8 +29,8 @@ public class RedisInvoker {
         Reply execute(Command command, ChannelHandlerContext ch) throws RedisException;
     }
 
-    public void init(final RedisServer rs) {
-        final Class<? extends RedisServer> aClass = rs.getClass();
+    public void init(final RedisCommandProcessor rs) {
+        final Class<? extends RedisCommandProcessor> aClass = rs.getClass();
         for (final Method method : aClass.getMethods()) {
             final Class<?>[] types = method.getParameterTypes();
             methods.put(new BytesKey(method.getName().getBytes()), new Wrapper() {

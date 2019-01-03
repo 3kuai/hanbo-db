@@ -17,7 +17,7 @@ import java.util.Map;
 @Slf4j
 @EqualsAndHashCode(callSuper = false)
 public abstract class IndexHelper extends BaseMedia {
-    static public final int maxCacheLimit = 1 << 19;
+    public static final int maxCacheLimit = 1 << 19;
     @Getter
     public Map<String, Object> kv = new LRUCache<>(maxCacheLimit);
     public Map<String, Long> expire = new LRUCache<>(maxCacheLimit);

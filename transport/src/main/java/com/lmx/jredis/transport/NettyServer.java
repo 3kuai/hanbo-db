@@ -1,9 +1,9 @@
 package com.lmx.jredis.transport;
 
 import com.lmx.jredis.core.BusHelper;
-import com.lmx.jredis.core.RedisInvoker;
-import com.lmx.jredis.core.RedisServer;
-import com.lmx.jredis.core.SimpleRedisServer;
+import com.lmx.jredis.core.RedisCommandInvoker;
+import com.lmx.jredis.core.RedisCommandProcessor;
+import com.lmx.jredis.core.RedisCommandProcessorImpl;
 import com.lmx.jredis.core.datastruct.RedisDbDelegate;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelInitializer;
@@ -44,13 +44,13 @@ public class NettyServer {
     @Autowired
     private RedisDbDelegate delegate;
     @Autowired
-    private RedisInvoker invoker;
+    private RedisCommandInvoker invoker;
 
     @PostConstruct
     public void start() throws Exception {
         bossGroup = new NioEventLoopGroup(1);
         workerGroup = new NioEventLoopGroup(1);
-        RedisServer redis = new SimpleRedisServer();
+        RedisCommandProcessor redis = new RedisCommandProcessorImpl();
         invoker.init(redis);
         redis.initStore(busHelper, delegate);
         ServerBootstrap serverBootstrap = new ServerBootstrap();
