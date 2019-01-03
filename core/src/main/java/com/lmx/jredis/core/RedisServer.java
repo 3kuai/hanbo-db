@@ -7,7 +7,7 @@ import redis.netty4.*;
 public interface RedisServer {
     boolean hasOpenTx();
 
-    Reply handlerTxOp(byte[] cmd, Object[] objects);
+    Reply handlerTxOp(Command command) throws RedisException;
 
     /**
      * start a transaction

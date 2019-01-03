@@ -9,6 +9,5 @@ import lombok.Data;
 @Data
 @Builder
 public class QueueEvent {
-    private String type = "set";
-    private byte[] key, value;
+    private redis.netty4.Command command;
 }

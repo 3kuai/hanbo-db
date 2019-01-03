@@ -2,23 +2,20 @@ package com.lmx.jredis.core.transaction;
 
 import com.lmx.jredis.core.BusHelper;
 import com.lmx.jredis.core.RedisException;
+import com.lmx.jredis.core.RedisInvoker;
 import com.lmx.jredis.core.RedisServer;
 import com.lmx.jredis.core.datastruct.RedisDbDelegate;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
 import lombok.extern.slf4j.Slf4j;
+import redis.netty4.Command;
 import redis.netty4.IntegerReply;
 import redis.netty4.Reply;
 import redis.netty4.StatusReply;
 
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 import java.util.ArrayDeque;
-import java.util.Map;
 import java.util.Queue;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static redis.netty4.IntegerReply.integer;
 
@@ -36,54 +33,28 @@ public abstract class AbstractTransactionHandler implements RedisServer {
     protected ChannelHandlerContext channelHandlerContext;
     protected String transaction = "transactionIdentify";
     protected String session = "sessionIdentify";
-    protected Map<String, Method> methods = new ConcurrentHashMap<>();
-    protected TxOperation txOperation = (TxOperation) new TxOperationProxy().newProxy(TxOperation.class);
-
-    {
-        for (int i = 0; i < TxOperation.class.getMethods().length; i++) {
-            Method method = TxOperation.class.getMethods()[i];
-            methods.put(method.getName(), method);
-        }
-
-    }
 
     protected Attribute getTxAttribute() {
         return channelHandlerContext.channel().attr(AttributeKey.valueOf(transaction));
-    }
-
-    class TxOperationProxy implements InvocationHandler {
-
-        @Override
-        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-            Queue queue = (Queue) getTxAttribute().get();
-            if (method.getName().equals("set")) {
-                queue.add(QueueEvent.builder().type("set").key((byte[]) args[0]).value((byte[]) args[1]).build());
-                return StatusReply.QUEUED;
-            }
-            //TODO more operations
-            if (method.getName().equals("exec"))
-                return exec();
-            if (method.getName().equals("discard"))
-                return discard();
-            return null;
-        }
-
-        public Object newProxy(Class clz) {
-            return Proxy.newProxyInstance(this.getClass().getClassLoader(), new Class[]{clz}, this);
-        }
     }
 
     public boolean hasOpenTx() {
         return getTxAttribute().get() != null;
     }
 
-    public Reply handlerTxOp(byte[] cmd, Object[] objects) {
-        try {
-            return (Reply) methods.get(new String(cmd)).invoke(txOperation, objects);
-        } catch (Exception e) {
-            log.error("", e);
+
+    public Reply handlerTxOp(Command command) throws RedisException {
+        if (new String(command.getName()).equals("exec")) {
+            return exec();
         }
-        return null;
+        if (new String(command.getName()).equals("discard")) {
+            return discard();
+        }
+        Queue queue = (Queue) getTxAttribute().get();
+        //declare internal event for command
+        command.setEventType(1);
+        queue.add(command);
+        return StatusReply.QUEUED;
     }
 
 
@@ -99,10 +70,7 @@ public abstract class AbstractTransactionHandler implements RedisServer {
         Attribute attribute = getTxAttribute();
         Queue queue = ((Queue) attribute.get());
         for (Object o : queue) {
-            QueueEvent queueEvent = (QueueEvent) o;
-            RedisDbDelegate.RedisDB kv = getRedisDB();
-            if (queueEvent.getType().equals("set"))
-                kv.getSimpleKV().write(new String(queueEvent.getKey()), new String(queueEvent.getValue()));
+            RedisInvoker.handlerEvent(channelHandlerContext, (Command) o);
         }
         queue.clear();
         attribute.set(null);

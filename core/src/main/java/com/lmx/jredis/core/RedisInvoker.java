@@ -9,7 +9,6 @@ import redis.netty4.ErrorReply;
 import redis.netty4.Reply;
 import redis.util.BytesKey;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,25 +35,19 @@ public class RedisInvoker {
             final Class<?>[] types = method.getParameterTypes();
             methods.put(new BytesKey(method.getName().getBytes()), new Wrapper() {
                 @Override
-                public Reply execute(Command command, ChannelHandlerContext ch) throws RedisException {
+                public Reply execute(Command command, ChannelHandlerContext ch) {
                     Object[] objects = new Object[types.length];
                     long start = System.currentTimeMillis();
                     try {
                         command.toArguments(objects, types);
                         rs.setChannelHandlerContext(ch);
-                        if (rs.hasOpenTx())
-                            return rs.handlerTxOp(command.getName(), objects);
-                        else
+                        if (rs.hasOpenTx() && command.getEventType() == 0) {
+                            return rs.handlerTxOp(command);
+                        } else {
                             return (Reply) method.invoke(rs, objects);
-                    } catch (IllegalAccessException e) {
-                        throw new RedisException("Invalid server implementation");
-                    } catch (InvocationTargetException e) {
-                        Throwable te = e.getTargetException();
-                        if (!(te instanceof RedisException)) {
-                            te.printStackTrace();
                         }
-                        return new ErrorReply("ERR " + te.getMessage());
                     } catch (Exception e) {
+                        log.error("", e);
                         return new ErrorReply("ERR " + e.getMessage());
                     } finally {
                         log.info("method {},cost {}ms", method.getName(), (System.currentTimeMillis() - start));
@@ -65,7 +58,7 @@ public class RedisInvoker {
         }
     }
 
-    public Reply handlerEvent(ChannelHandlerContext ctx, Command msg) throws RedisException {
+    public static Reply handlerEvent(ChannelHandlerContext ctx, Command msg) throws RedisException {
         byte[] name = msg.getName();
 
         for (int i = 0; i < name.length; i++) {
