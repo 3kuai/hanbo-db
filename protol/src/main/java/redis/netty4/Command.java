@@ -172,4 +172,7 @@ public class Command {
         os.writeBytes(CRLF);
     }
 
+    public Object[] getObjects() {
+        return objects;
+    }
 }

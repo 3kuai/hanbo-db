@@ -52,7 +52,7 @@ public class NettyServer {
         workerGroup = new NioEventLoopGroup(1);
         RedisCommandProcessor redis = new RedisCommandProcessorImpl();
         invoker.init(redis);
-        redis.initStore(busHelper, delegate);
+        redis.initStore(busHelper, delegate,invoker);
         ServerBootstrap serverBootstrap = new ServerBootstrap();
         serverBootstrap.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)

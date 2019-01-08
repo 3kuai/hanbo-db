@@ -5,6 +5,8 @@ import io.netty.channel.ChannelHandlerContext;
 import redis.netty4.*;
 
 public interface RedisCommandProcessor {
+    void setTXError();
+
     boolean hasOpenTx();
 
     Reply handlerTxOp(Command command) throws RedisException;
@@ -23,7 +25,7 @@ public interface RedisCommandProcessor {
      * @return
      * @throws RedisException
      */
-    StatusReply exec() throws RedisException;
+    Reply exec() throws RedisException;
 
     /**
      * discard a transaction
@@ -55,8 +57,9 @@ public interface RedisCommandProcessor {
      *
      * @param bus
      * @param delegate
+     * @param invoker
      */
-    void initStore(BusHelper bus, RedisDbDelegate delegate);
+    void initStore(BusHelper bus, RedisDbDelegate delegate, RedisCommandInvoker invoker);
 
     /**
      * Append a value to a key

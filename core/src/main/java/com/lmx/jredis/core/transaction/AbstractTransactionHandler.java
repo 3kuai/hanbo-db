@@ -1,18 +1,16 @@
 package com.lmx.jredis.core.transaction;
 
+import com.google.common.base.Charsets;
 import com.lmx.jredis.core.BusHelper;
-import com.lmx.jredis.core.RedisException;
 import com.lmx.jredis.core.RedisCommandInvoker;
 import com.lmx.jredis.core.RedisCommandProcessor;
+import com.lmx.jredis.core.RedisException;
 import com.lmx.jredis.core.datastruct.RedisDbDelegate;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
 import lombok.extern.slf4j.Slf4j;
-import redis.netty4.Command;
-import redis.netty4.IntegerReply;
-import redis.netty4.Reply;
-import redis.netty4.StatusReply;
+import redis.netty4.*;
 
 import java.util.ArrayDeque;
 import java.util.Queue;
@@ -31,10 +29,12 @@ public abstract class AbstractTransactionHandler implements RedisCommandProcesso
     protected BusHelper bus;
     protected RedisDbDelegate delegate;
     protected ChannelHandlerContext channelHandlerContext;
-    protected String transaction = "transactionIdentify";
-    protected String session = "sessionIdentify";
+    private String transaction = "transactionIdentify";
+    private String session = "sessionIdentify";
+    private RedisCommandInvoker invoker;
+    private AttributeKey txErrorAttr = AttributeKey.valueOf("txError");
 
-    protected Attribute getTxAttribute() {
+    public Attribute getTxAttribute() {
         return channelHandlerContext.channel().attr(AttributeKey.valueOf(transaction));
     }
 
@@ -66,15 +66,37 @@ public abstract class AbstractTransactionHandler implements RedisCommandProcesso
     }
 
     @Override
-    public StatusReply exec() throws RedisException {
+    public Reply exec() throws RedisException {
         Attribute attribute = getTxAttribute();
-        Queue queue = ((Queue) attribute.get());
-        for (Object o : queue) {
-            RedisCommandInvoker.handlerEvent(channelHandlerContext, (Command) o);
+        if (attribute.get() == null) {
+            return ErrorReply.ERROR_MULTI;
         }
-        queue.clear();
-        attribute.set(null);
-        return StatusReply.OK;
+        Queue queue = ((Queue) attribute.get());
+        if (queue != null) {
+            BulkReply[] bulkReply = new BulkReply[queue.size()];
+            int i = 0;
+            for (Object o : queue) {
+                Reply reply = invoker.handlerEvent(channelHandlerContext, (Command) o);
+                if (reply instanceof IntegerReply) {
+                    Long resp = ((IntegerReply) reply).data();
+                    bulkReply[i++] = new BulkReply(new byte[]{resp.byteValue()});
+                }
+                if (reply instanceof StatusReply) {
+                    String resp = ((StatusReply) reply).data();
+                    bulkReply[i++] = new BulkReply(resp.getBytes(Charsets.UTF_8));
+                }
+            }
+            queue.clear();
+            attribute.set(null);
+            return new MultiBulkReply(bulkReply);
+        } else {
+            String msg;
+            if ((msg = (String) channelHandlerContext.channel().attr(txErrorAttr).get()) != null) {
+                channelHandlerContext.channel().attr(txErrorAttr).set(null);
+                return new ErrorReply(msg);
+            }
+        }
+        return MultiBulkReply.EMPTY;
     }
 
     @Override
@@ -118,9 +140,13 @@ public abstract class AbstractTransactionHandler implements RedisCommandProcesso
         return integer(1);
     }
 
-    public void initStore(BusHelper bus, RedisDbDelegate delegate) {
+    public void initStore(BusHelper bus, RedisDbDelegate delegate, RedisCommandInvoker invoker) {
         this.bus = bus;
         this.delegate = delegate;
+        this.invoker = invoker;
     }
 
+    public void setTXError() {
+        channelHandlerContext.channel().attr(txErrorAttr).set("EXECABORT Transaction discarded because of previous errors.");
+    }
 }

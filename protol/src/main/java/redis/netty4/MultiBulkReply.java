@@ -16,7 +16,7 @@ import static redis.util.Encoding.numToBytes;
  */
 public class MultiBulkReply implements Reply<Reply[]> {
     public static final MultiBulkReply BLOCKING_QUEUE
-            = new MultiBulkReply(new BulkReply[]{new BulkReply("blockingQueue".getBytes())});
+            = new MultiBulkReply(new Reply[]{StatusReply.QUEUED});
     public static final char MARKER = '*';
     public static final MultiBulkReply EMPTY = new MultiBulkReply(new Reply[0]);
 

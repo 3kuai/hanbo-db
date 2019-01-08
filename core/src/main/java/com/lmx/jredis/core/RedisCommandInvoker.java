@@ -22,24 +22,30 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class RedisCommandInvoker {
     private static final byte LOWER_DIFF = 'a' - 'A';
-
+    private RedisCommandProcessor rs;
     public static final Map<BytesKey, Wrapper> methods = new ConcurrentHashMap<>();
 
     public interface Wrapper {
         Reply execute(Command command, ChannelHandlerContext ch) throws RedisException;
     }
 
-    public void init(final RedisCommandProcessor rs) {
+    public void init(RedisCommandProcessor rss) {
+        this.rs = rss;
         final Class<? extends RedisCommandProcessor> aClass = rs.getClass();
         for (final Method method : aClass.getMethods()) {
             final Class<?>[] types = method.getParameterTypes();
-            methods.put(new BytesKey(method.getName().getBytes()), new Wrapper() {
+            final String mName = method.getName();
+            methods.put(new BytesKey(mName.getBytes()), new Wrapper() {
                 @Override
                 public Reply execute(Command command, ChannelHandlerContext ch) {
                     Object[] objects = new Object[types.length];
                     long start = System.currentTimeMillis();
                     try {
                         command.toArguments(objects, types);
+                        //check param
+                        if (command.getObjects().length - 1 < types.length) {
+                            throw new RedisException("wrong number of arguments for '" + mName + "' command");
+                        }
                         rs.setChannelHandlerContext(ch);
                         if (rs.hasOpenTx() && command.getEventType() == 0) {
                             return rs.handlerTxOp(command);
@@ -58,7 +64,7 @@ public class RedisCommandInvoker {
         }
     }
 
-    public static Reply handlerEvent(ChannelHandlerContext ctx, Command msg) throws RedisException {
+    public Reply handlerEvent(ChannelHandlerContext ctx, Command msg) throws RedisException {
         byte[] name = msg.getName();
 
         for (int i = 0; i < name.length; i++) {
@@ -71,6 +77,11 @@ public class RedisCommandInvoker {
         Reply reply;
         if (wrapper == null) {
             reply = new ErrorReply("unknown command '" + new String(name, Charsets.US_ASCII) + "'");
+            //if started tx,then invoker discard method and setErrorMsg
+            if (rs.hasOpenTx()) {
+                rs.discard();
+                rs.setTXError();
+            }
         } else {
             reply = wrapper.execute(msg, ctx);
         }

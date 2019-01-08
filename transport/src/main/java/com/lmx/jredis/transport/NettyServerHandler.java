@@ -3,7 +3,6 @@ package com.lmx.jredis.transport;
 import com.lmx.jredis.core.BusHelper;
 import com.lmx.jredis.core.RedisCommandInvoker;
 import com.lmx.jredis.core.transaction.BlockingQueueHelper;
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -47,11 +46,8 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<Command> {
             }
             if (reply instanceof MultiBulkReply) {
                 MultiBulkReply multiBulkReply = (MultiBulkReply) reply;
-                if (multiBulkReply.data().length > 0) {
-                    ByteBuf byteBuf = (ByteBuf) multiBulkReply.data()[0].data();
-                    if (new String(byteBuf.array()).equals("blockingQueue")) {
-                        return;
-                    }
+                if (multiBulkReply == MultiBulkReply.BLOCKING_QUEUE) {
+                    return;
                 }
             }
             ctx.write(reply);
