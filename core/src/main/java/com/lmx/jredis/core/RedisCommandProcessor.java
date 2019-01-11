@@ -35,6 +35,7 @@ public interface RedisCommandProcessor {
      */
     StatusReply discard() throws RedisException;
 
+    //    MultiBulkReply scan(byte[] index0, byte[] matcher, byte[] pattern, byte[] limited, byte[] count) throws RedisException;
     MultiBulkReply scan(byte[] index0) throws RedisException;
 
     /**
@@ -1400,4 +1401,5 @@ public interface RedisCommandProcessor {
      */
     IntegerReply zunionstore(byte[] destination0, byte[] numkeys1, byte[][] key2) throws RedisException;
 
+    MultiBulkReply hscan(byte[] hash) throws RedisException;
 }

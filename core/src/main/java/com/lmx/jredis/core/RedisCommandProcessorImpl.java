@@ -1,5 +1,6 @@
 package com.lmx.jredis.core;
 
+import com.google.common.collect.Lists;
 import com.lmx.jredis.core.datastruct.RedisDbDelegate;
 import com.lmx.jredis.core.datastruct.SimpleHash;
 import com.lmx.jredis.core.datastruct.SimpleKV;
@@ -31,9 +32,8 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
 
     @Override
     public MultiBulkReply scan(byte[] index0) throws RedisException {
-        //FIXME can not switch database,only used in current channel
-        RedisDbDelegate.RedisDB store = delegate.select(Integer.parseInt(new String(index0)));
-        List<Reply<ByteBuf>> replies = new ArrayList<>();
+        RedisDbDelegate.RedisDB store = getRedisDB();
+        List<BulkReply> replies = new ArrayList<>();
         IndexHelper indexHelper = store.getIndexHelper();
         Iterator<String> it = indexHelper.getKv().keySet().iterator();
         while (it.hasNext()) {
@@ -41,7 +41,10 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
             byte[] bytes = key.getBytes();
             replies.add(new BulkReply(bytes));
         }
-        return new MultiBulkReply(replies.toArray(new Reply[replies.size()]));
+        List<Reply> resp = Lists.newArrayList();
+        resp.add(new BulkReply(new byte[]{17}));
+        resp.add(new MultiBulkReply(replies.toArray(new BulkReply[replies.size()])));
+        return new MultiBulkReply(resp.toArray(new Reply[resp.size()]));
     }
 
     private static final StatusReply PONG = new StatusReply("PONG");
@@ -1006,9 +1009,98 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
     @Override
     public BulkReply info(byte[] section) throws RedisException {
         StringBuilder sb = new StringBuilder();
-        sb.append("redis_version:2.6.0\n");
-        sb.append("keys:").append(data.size()).append("\n");
-        sb.append("uptime:").append(now() - started).append("\n");
+        sb.append("# Server\n" +
+                "redis_version:2.9.11\n" +
+                "redis_git_sha1:937384d0\n" +
+                "redis_git_dirty:0\n" +
+                "redis_build_id:8e9509442863f22\n" +
+                "redis_mode:standalone\n" +
+                "os:Linux 3.13.0-35-generic x86_64\n" +
+                "arch_bits:64\n" +
+                "multiplexing_api:epoll\n" +
+                "gcc_version:4.8.2\n" +
+                "process_id:4716\n" +
+                "run_id:26186aac3f2380aaee9eef21cc50aecd542d97dc\n" +
+                "tcp_port:6379\n" +
+                "uptime_in_seconds:362\n" +
+                "uptime_in_days:0\n" +
+                "hz:10\n" +
+                "lru_clock:1725349\n" +
+                "config_file:\n" +
+                "\n" +
+                "# Clients\n" +
+                "connected_clients:1\n" +
+                "client_longest_output_list:0\n" +
+                "client_biggest_input_buf:0\n" +
+                "blocked_clients:0\n" +
+                "\n" +
+                "# Memory\n" +
+                "used_memory:508536\n" +
+                "used_memory_human:496.62K\n" +
+                "used_memory_rss:7974912\n" +
+                "used_memory_peak:508536\n" +
+                "used_memory_peak_human:496.62K\n" +
+                "used_memory_lua:33792\n" +
+                "mem_fragmentation_ratio:15.68\n" +
+                "mem_allocator:jemalloc-3.2.0\n" +
+                "\n" +
+                "# Persistence\n" +
+                "loading:0\n" +
+                "rdb_changes_since_last_save:6\n" +
+                "rdb_bgsave_in_progress:0\n" +
+                "rdb_last_save_time:1411011131\n" +
+                "rdb_last_bgsave_status:ok\n" +
+                "rdb_last_bgsave_time_sec:-1\n" +
+                "rdb_current_bgsave_time_sec:-1\n" +
+                "aof_enabled:0\n" +
+                "aof_rewrite_in_progress:0\n" +
+                "aof_rewrite_scheduled:0\n" +
+                "aof_last_rewrite_time_sec:-1\n" +
+                "aof_current_rewrite_time_sec:-1\n" +
+                "aof_last_bgrewrite_status:ok\n" +
+                "aof_last_write_status:ok\n" +
+                "\n" +
+                "# Stats\n" +
+                "total_connections_received:2\n" +
+                "total_commands_processed:4\n" +
+                "instantaneous_ops_per_sec:0\n" +
+                "rejected_connections:0\n" +
+                "sync_full:0\n" +
+                "sync_partial_ok:0\n" +
+                "sync_partial_err:0\n" +
+                "expired_keys:0\n" +
+                "evicted_keys:0\n" +
+                "keyspace_hits:0\n" +
+                "keyspace_misses:0\n" +
+                "pubsub_channels:0\n" +
+                "pubsub_patterns:0\n" +
+                "latest_fork_usec:0\n" +
+                "migrate_cached_sockets:0\n" +
+                "\n" +
+                "# Replication\n" +
+                "role:master\n" +
+                "connected_slaves:0\n" +
+                "master_repl_offset:0\n" +
+                "repl_backlog_active:0\n" +
+                "repl_backlog_size:1048576\n" +
+                "repl_backlog_first_byte_offset:0\n" +
+                "repl_backlog_histlen:0\n" +
+                "\n" +
+                "# CPU\n" +
+                "used_cpu_sys:0.21\n" +
+                "used_cpu_user:0.17\n" +
+                "used_cpu_sys_children:0.00\n" +
+                "used_cpu_user_children:0.00\n" +
+                "\n" +
+                "# Cluster\n" +
+                "cluster_enabled:0\n" +
+                "\n" +
+                "# Keyspace\n");
+        int dbCount = 0;
+        for (RedisDbDelegate.RedisDB db : RedisDbDelegate.db.values()) {
+            int dbSize = db.getIndexHelper().kv.size();
+            sb.append("db" + (dbCount++) + ":keys=" + dbSize + ",expires=81390,avg_ttl=47463342\n");
+        }
         return new BulkReply(sb.toString().getBytes());
     }
 
@@ -1230,8 +1322,13 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
      */
     @Override
     public IntegerReply llen(byte[] key0) throws RedisException {
-        List<BytesValue> list = _getlist(key0, false);
-        return list == null ? integer(0) : integer(list.size());
+        SimpleList list = getRedisDB().getSimpleList();
+        List<byte[]> list_ = list.read(new String(key0), 0, -1);
+        if (list_ == null) {
+            return IntegerReply.integer(0);
+        } else {
+            return IntegerReply.integer(list_.size());
+        }
     }
 
     /**
@@ -1302,7 +1399,8 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
     @Override
     public MultiBulkReply lrange(byte[] key0, byte[] start1, byte[] stop2) throws RedisException {
         SimpleList list = getRedisDB().getSimpleList();
-        List<byte[]> list_ = list.read(new String(key0), Integer.parseInt(new String(start1)), Integer.parseInt(new String(stop2)));
+        List<byte[]> list_ = list.read(new String(key0), Integer.parseInt(new String(start1)),
+                Integer.parseInt(new String(stop2).compareTo("4294967295") >= 0 ? "-1" : new String(stop2)));
         if (list_ == null) {
             return MultiBulkReply.EMPTY;
         } else {
@@ -2149,8 +2247,10 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
      */
     @Override
     public IntegerReply hlen(byte[] key0) throws RedisException {
-        BytesKeyObjectMap<byte[]> hash = _gethash(key0, false);
-        return integer(hash.size());
+        SimpleHash hash = getRedisDB().getSimpleHash();
+        byte[][] data = hash.read(new String(key0));
+        int size = data.length;
+        return integer(size);
     }
 
     /**
@@ -3136,5 +3236,10 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
     @Override
     public IntegerReply zunionstore(byte[] destination0, byte[] numkeys1, byte[][] key2) throws RedisException {
         return _zstore(destination0, numkeys1, key2, "zunionstore", true);
+    }
+
+    @Override
+    public MultiBulkReply hscan(byte[] hash) throws RedisException {
+        return hgetall(hash);
     }
 }
