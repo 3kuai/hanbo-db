@@ -68,7 +68,7 @@ public class SimpleList extends BaseOP {
             for (Object l : (List) (ih.kv).get(key)) {
                 resp.add(store.get((DataHelper) l));
             }
-            resp = resp.subList(startIdx, endIdx == -1 ? resp.size() : endIdx);
+            resp = resp.subList(startIdx, endIdx == -1 ? resp.size() : endIdx+1);
             log.debug("key={},value={} cost={}ms", key, resp, (System.currentTimeMillis() - start));
             return resp;
         } catch (Exception e) {
