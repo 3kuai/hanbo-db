@@ -2,6 +2,7 @@ package com.lmx.jredis.core.transaction;
 
 import com.google.common.collect.Lists;
 import com.lmx.jredis.core.RedisCommandProcessorImpl;
+import com.lmx.jredis.core.RedisException;
 import com.lmx.jredis.core.datastruct.SimpleList;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.Attribute;
@@ -75,7 +76,12 @@ public class BlockingQueueHelper {
             Attribute attribute = contextList.get(randomVal).channel().attr(RedisCommandProcessorImpl.attributeKey);
             int position = (int) attribute.get();
             attribute.set(null);
-            byte[] list_ = v.pop(key, position);
+            byte[] list_ = new byte[0];
+            try {
+                list_ = v.pop(key, position);
+            } catch (RedisException e) {
+                log.error("", e);
+            }
             if (list_ != null) {
                 Reply[] replies = new BulkReply[]{new BulkReply(key.getBytes()), new BulkReply(list_)};
                 contextList.get(randomVal).writeAndFlush(new MultiBulkReply(replies));

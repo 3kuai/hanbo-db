@@ -1,13 +1,16 @@
 package com.lmx.jredis.core.datastruct;
 
 import com.google.common.base.Charsets;
-import com.lmx.jredis.storage.*;
+import com.lmx.jredis.core.RedisException;
+import com.lmx.jredis.storage.BaseMedia;
+import com.lmx.jredis.storage.DataHelper;
+import com.lmx.jredis.storage.DataMedia;
+import com.lmx.jredis.storage.DataTypeEnum;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.CollectionUtils;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -75,8 +78,11 @@ public class SimpleHash extends BaseOP {
         return false;
     }
 
-    public byte[] read(String hash, String field) {
+    public byte[] read(String hash, String field) throws RedisException {
         try {
+            if (!checkKeyType(hash)) {
+                throw new RedisException("Operation against a key holding the wrong kind of value");
+            }
             if (super.isExpire(hash)) {
                 return null;
             }
@@ -89,12 +95,16 @@ public class SimpleHash extends BaseOP {
             log.debug("key={},value={} cost={}ms", field, resp, (System.currentTimeMillis() - start));
         } catch (Exception e) {
             log.error("read list data error", e);
+            throw e;
         }
         return null;
     }
 
-    public byte[][] read(String hash) {
+    public byte[][] read(String hash) throws RedisException {
         try {
+            if (!checkKeyType(hash)) {
+                throw new RedisException("Operation against a key holding the wrong kind of value");
+            }
             if (super.isExpire(hash)) {
                 return null;
             }
@@ -110,8 +120,8 @@ public class SimpleHash extends BaseOP {
             return data;
         } catch (Exception e) {
             log.error("read list data error", e);
+            throw e;
         }
-        return null;
     }
 
     @Override

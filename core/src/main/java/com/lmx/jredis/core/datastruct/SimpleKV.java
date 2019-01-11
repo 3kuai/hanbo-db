@@ -1,10 +1,9 @@
 package com.lmx.jredis.core.datastruct;
 
 import com.google.common.base.Charsets;
+import com.lmx.jredis.core.RedisException;
 import com.lmx.jredis.storage.DataHelper;
 import com.lmx.jredis.storage.DataMedia;
-import com.lmx.jredis.storage.DataTypeEnum;
-import com.lmx.jredis.storage.IndexHelper;
 import lombok.extern.slf4j.Slf4j;
 
 import java.nio.ByteBuffer;
@@ -56,8 +55,11 @@ public class SimpleKV extends BaseOP {
         return false;
     }
 
-    public byte[] read(String key) {
+    public byte[] read(String key) throws RedisException {
         try {
+            if (!checkKeyType(key)) {
+                throw new RedisException("Operation against a key holding the wrong kind of value");
+            }
             if (super.isExpire(key)) {
                 return null;
             }
@@ -68,8 +70,8 @@ public class SimpleKV extends BaseOP {
             return data;
         } catch (Exception e) {
             log.error("read data error", e);
+            throw e;
         }
-        return null;
     }
 
     @Override

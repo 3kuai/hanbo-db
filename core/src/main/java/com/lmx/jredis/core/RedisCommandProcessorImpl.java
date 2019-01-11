@@ -31,9 +31,10 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
 
     @Override
     public MultiBulkReply scan(byte[] index0) throws RedisException {
-        this.select(index0);
-        List<Reply<ByteBuf>> replies = new ArrayList<Reply<ByteBuf>>();
-        IndexHelper indexHelper = getRedisDB().getIndexHelper();
+        //FIXME can not switch database,only used in current channel
+        RedisDbDelegate.RedisDB store = delegate.select(Integer.parseInt(new String(index0)));
+        List<Reply<ByteBuf>> replies = new ArrayList<>();
+        IndexHelper indexHelper = store.getIndexHelper();
         Iterator<String> it = indexHelper.getKv().keySet().iterator();
         while (it.hasNext()) {
             String key = it.next();
@@ -1125,14 +1126,10 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
     public MultiBulkReply blpop(byte[][] key0) throws RedisException {
         SimpleList list = getRedisDB().getSimpleList();
         String k = new String(key0[0]);
-        if (list.getIh().type(k) != null &&
-                list.getIh().type(k) instanceof List && ((List) list.getIh().type(k)).size() > 0) {
+        if (list.getIh().type(k) != null && ((List) list.getIh().type(k)).size() > 0) {
             byte[] val = list.popHead(k);
             Reply[] replies = new BulkReply[]{new BulkReply(key0[0]), new BulkReply(val)};
             return new MultiBulkReply(replies);
-        } else if (list.getIh().type(k) != null &&
-                !(list.getIh().type(k) instanceof List)) {
-            return new MultiBulkReply(new Reply[]{WRONG_TYPE});
         } else {
             channelHandlerContext.channel().attr(attributeKey).set(1);
             // Blocking until the list only has a element
@@ -1152,14 +1149,10 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
     public MultiBulkReply brpop(byte[][] key0) throws RedisException {
         SimpleList list = getRedisDB().getSimpleList();
         String k = new String(key0[0]);
-        if (list.getIh().type(k) != null &&
-                list.getIh().type(k) instanceof List && ((List) list.getIh().type(k)).size() > 0) {
+        if (list.getIh().type(k) != null && ((List) list.getIh().type(k)).size() > 0) {
             byte[] val = list.popTail(k);
             Reply[] replies = new BulkReply[]{new BulkReply(key0[0]), new BulkReply(val)};
             return new MultiBulkReply(replies);
-        } else if (list.getIh().type(k) != null &&
-                !(list.getIh().type(k) instanceof List)) {
-            return MultiBulkReply.EMPTY;
         } else {
             channelHandlerContext.channel().attr(attributeKey).set(0);
             // Blocking until the list only has a element

@@ -1,12 +1,15 @@
 package com.lmx.jredis.core.datastruct;
 
+import com.lmx.jredis.core.RedisException;
 import com.lmx.jredis.core.transaction.BlockingQueueHelper;
-import com.lmx.jredis.storage.*;
+import com.lmx.jredis.storage.BaseMedia;
+import com.lmx.jredis.storage.DataHelper;
+import com.lmx.jredis.storage.DataMedia;
+import com.lmx.jredis.storage.DataTypeEnum;
 import lombok.extern.slf4j.Slf4j;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -52,8 +55,11 @@ public class SimpleList extends BaseOP {
         return false;
     }
 
-    public List<byte[]> read(String key, int startIdx, int endIdx) {
+    public List<byte[]> read(String key, int startIdx, int endIdx) throws RedisException {
         try {
+            if (!checkKeyType(key)) {
+                throw new RedisException("Operation against a key holding the wrong kind of value");
+            }
             if (super.isExpire(key)) {
                 return null;
             }
@@ -67,8 +73,8 @@ public class SimpleList extends BaseOP {
             return resp;
         } catch (Exception e) {
             log.error("read list data error", e);
+            throw e;
         }
-        return null;
     }
 
     @Override
@@ -89,7 +95,7 @@ public class SimpleList extends BaseOP {
      *
      * @param key
      */
-    public byte[] popHead(String key) {
+    public byte[] popHead(String key) throws RedisException {
         return pop(key, 1);
     }
 
@@ -98,11 +104,14 @@ public class SimpleList extends BaseOP {
      *
      * @param key
      */
-    public byte[] popTail(String key) {
+    public byte[] popTail(String key) throws RedisException {
         return pop(key, 0);
     }
 
-    public byte[] pop(String key, int point) {
+    public byte[] pop(String key, int point) throws RedisException {
+        if (!checkKeyType(key)) {
+            throw new RedisException("Operation against a key holding the wrong kind of value");
+        }
         List<DataHelper> list = (List<DataHelper>) ih.type(key);
         DataHelper headData = null;
         if (list.size() > 0) {

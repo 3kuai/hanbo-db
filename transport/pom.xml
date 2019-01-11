@@ -17,11 +17,11 @@
             <artifactId>core</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
-        <dependency>
+<!--        <dependency>
             <groupId>com.lmax</groupId>
             <artifactId>disruptor</artifactId>
             <version>3.3.7</version>
-        </dependency>
+        </dependency>-->
     </dependencies>
     <build>
         <plugins>

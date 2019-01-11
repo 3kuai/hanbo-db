@@ -37,7 +37,7 @@ public abstract class BaseOP {
         ih.kv.remove(key);
     }
 
-    public boolean write(String key, String value) {
+    public boolean write(String key, String value) throws Exception {
         return checkKeyType(key);
     }
 

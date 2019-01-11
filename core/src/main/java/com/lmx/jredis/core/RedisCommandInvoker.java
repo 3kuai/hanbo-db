@@ -9,6 +9,7 @@ import redis.netty4.ErrorReply;
 import redis.netty4.Reply;
 import redis.util.BytesKey;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -54,7 +55,10 @@ public class RedisCommandInvoker {
                         }
                     } catch (Exception e) {
                         log.error("", e);
-                        return new ErrorReply("ERR " + e.getMessage());
+                        if (e instanceof InvocationTargetException)
+                            return new ErrorReply("ERR " + ((InvocationTargetException) e).getTargetException().getMessage());
+                        else
+                            return new ErrorReply("ERR " + e.getMessage());
                     } finally {
                         log.info("method {},cost {}ms", method.getName(), (System.currentTimeMillis() - start));
                     }
