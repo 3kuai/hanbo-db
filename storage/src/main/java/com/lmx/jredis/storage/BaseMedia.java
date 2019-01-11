@@ -27,6 +27,10 @@ public class BaseMedia {
     static int dbLength = 8;
 
     static {
+        initFileSys();
+    }
+
+    public static void initFileSys() {
         file = new File(BASE_DIR);
         if (!file.exists())
             file.mkdir();
@@ -38,7 +42,6 @@ public class BaseMedia {
                 defaultFile = file;
             }
         }
-
     }
 
     public BaseMedia() {

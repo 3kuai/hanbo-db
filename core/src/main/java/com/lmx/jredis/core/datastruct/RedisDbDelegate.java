@@ -45,18 +45,20 @@ public class RedisDbDelegate {
     }
 
     @Data
-    public static class RedisDB {
+    public class RedisDB {
         IndexHelper indexHelper;
         SimpleKV simpleKV;
         SimpleList simpleList;
         SimpleHash simpleHash;
         int lastKvSize;
+        int dbIdx;
 
         @Getter
         public Map<String, Object> kvFilter = new ConcurrentHashMap<>();
 
         void init(int i, int storeSize) {
             try {
+                this.dbIdx = i;
                 indexHelper = new IndexHelper(i, "keyIndex", storeSize / 2) {
                     public void wrapData(DataHelper dataHelper) {
                         if (dataHelper.getType().equals(DataTypeEnum.KV.getDesc())) {
@@ -87,7 +89,6 @@ public class RedisDbDelegate {
                 log.error("", e);
             }
 
-
             log.info("db: {},recover data key index size: {}", i, lastKvSize);
 
             simpleKV = new SimpleKV(storeSize);
@@ -101,6 +102,20 @@ public class RedisDbDelegate {
             simpleHash.setIh(indexHelper);
             if (db.get(i) == null) {
                 db.put(i, this);
+            }
+        }
+
+        public void flush() {
+            try {
+                indexHelper.kv.clear();
+                indexHelper.expire.clear();
+                indexHelper.clean();
+                simpleKV.store.clean();
+                simpleList.store.clean();
+                simpleHash.store.clean();
+                this.init(dbIdx, storeSize);
+            } catch (Exception e) {
+                log.error("", e);
             }
         }
     }

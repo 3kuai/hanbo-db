@@ -1008,7 +1008,8 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
      */
     @Override
     public StatusReply flushdb() throws RedisException {
-        data.clear();
+//        data.clear();
+        getRedisDB().flush();
         return OK;
     }
 
