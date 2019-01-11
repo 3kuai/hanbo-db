@@ -33,8 +33,10 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
     @Override
     public MultiBulkReply hscan(byte[] hash) throws RedisException {
         List<Reply> resp = Lists.newArrayList();
-        resp.add(new BulkReply(new byte[]{17}));
-        resp.add(hgetall(hash));
+        MultiBulkReply multiBulkReply = hgetall(hash);
+        //TODO need paging,first response the bulk of the first element is next request paging number
+        resp.add(new BulkReply(String.valueOf(0).getBytes()));
+        resp.add(multiBulkReply);
         return new MultiBulkReply(resp.toArray(new Reply[resp.size()]));
     }
 
@@ -50,8 +52,10 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
             replies.add(new BulkReply(bytes));
         }
         List<Reply> resp = Lists.newArrayList();
-        resp.add(new BulkReply(new byte[]{17}));
-        resp.add(new MultiBulkReply(replies.toArray(new BulkReply[replies.size()])));
+        MultiBulkReply multiBulkReply = new MultiBulkReply(replies.toArray(new BulkReply[replies.size()]));
+        //TODO need paging,first response the bulk of the first element is next request paging number
+        resp.add(new BulkReply(String.valueOf(0).getBytes()));
+        resp.add(multiBulkReply);
         return new MultiBulkReply(resp.toArray(new Reply[resp.size()]));
     }
 
@@ -2257,7 +2261,7 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
     public IntegerReply hlen(byte[] key0) throws RedisException {
         SimpleHash hash = getRedisDB().getSimpleHash();
         byte[][] data = hash.read(new String(key0));
-        int size = data.length;
+        int size = data.length / 2;
         return integer(size);
     }
 
