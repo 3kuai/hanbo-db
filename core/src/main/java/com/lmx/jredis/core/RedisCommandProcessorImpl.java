@@ -31,6 +31,14 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
     public static AttributeKey attributeKey = AttributeKey.newInstance("popPosition");
 
     @Override
+    public MultiBulkReply hscan(byte[] hash) throws RedisException {
+        List<Reply> resp = Lists.newArrayList();
+        resp.add(new BulkReply(new byte[]{17}));
+        resp.add(hgetall(hash));
+        return new MultiBulkReply(resp.toArray(new Reply[resp.size()]));
+    }
+
+    @Override
     public MultiBulkReply scan(byte[] index0) throws RedisException {
         RedisDbDelegate.RedisDB store = getRedisDB();
         List<BulkReply> replies = new ArrayList<>();
@@ -2308,7 +2316,7 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
      */
     @Override
     public Reply hset(byte[] key0, byte[] field1, byte[] value2) throws RedisException {
-        SimpleHash hash = (SimpleHash) getRedisDB().getSimpleHash();
+        SimpleHash hash = getRedisDB().getSimpleHash();
         return hash.write(new String(key0), new String(field1), new String(value2)) ? integer(1) : WRONG_TYPE;
     }
 
@@ -2323,14 +2331,7 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
      */
     @Override
     public IntegerReply hsetnx(byte[] key0, byte[] field1, byte[] value2) throws RedisException {
-        BytesKeyObjectMap<byte[]> hash = _gethash(key0, true);
-        byte[] bytes = hash.get(field1);
-        if (bytes == null) {
-            hash.put(field1, value2);
-            return integer(1);
-        } else {
-            return integer(0);
-        }
+        return (IntegerReply) hset(key0, field1, value2);
     }
 
     /**
@@ -3236,10 +3237,5 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
     @Override
     public IntegerReply zunionstore(byte[] destination0, byte[] numkeys1, byte[][] key2) throws RedisException {
         return _zstore(destination0, numkeys1, key2, "zunionstore", true);
-    }
-
-    @Override
-    public MultiBulkReply hscan(byte[] hash) throws RedisException {
-        return hgetall(hash);
     }
 }
