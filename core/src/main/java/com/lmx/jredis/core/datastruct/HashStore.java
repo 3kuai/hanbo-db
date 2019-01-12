@@ -19,30 +19,30 @@ import java.util.Map;
  * Created by lmx on 2017/4/14.
  */
 @Slf4j
-public class SimpleHash extends BaseOP {
+public class HashStore extends AbstractStoreMedia {
 
-    int storeSize;
+    int dataMediaSize;
 
-    SimpleHash(int storeSize) {
-        this.storeSize = storeSize;
+    HashStore(int dataMediaSize) {
+        this.dataMediaSize = dataMediaSize;
     }
 
     public void init(int db) {
         try {
-            store = new DataMedia(db, "hashData", storeSize);
+            dataMedia = new DataMedia(db, "hashData", dataMediaSize);
         } catch (Exception e) {
-            log.error("init store file error", e);
+            log.error("init dataMedia file error", e);
         }
     }
 
     public boolean write(String hash, String field, String value) {
         try {
             if (super.write(field, value)) {
-                Map<String, DataHelper> map = ((Map<String, DataHelper>) ih.type(hash));
+                Map<String, DataHelper> map = ((Map<String, DataHelper>) indexHelper.type(hash));
                 if (!CollectionUtils.isEmpty(map)) {
                     if (map.containsKey(field)) {
-                        store.update(map.get(field), value.getBytes(Charsets.UTF_8));
-                        ih.updateIndex(map.get(field));
+                        dataMedia.update(map.get(field), value.getBytes(Charsets.UTF_8));
+                        indexHelper.updateIndex(map.get(field));
                         return true;
                     } else {
                         ByteBuffer b = ByteBuffer.allocateDirect(128);
@@ -50,12 +50,12 @@ public class SimpleHash extends BaseOP {
                         b.putInt(length);
                         b.put(value.getBytes(BaseMedia.CHARSET));
                         b.flip();
-                        DataHelper dh = store.add(b);
+                        DataHelper dh = dataMedia.add(b);
                         dh.setHash(hash);
                         dh.setType(DataTypeEnum.HASH.getDesc());
                         dh.setKey(field);
                         dh.setLength(length);
-                        ih.add(dh);
+                        indexHelper.add(dh);
                         return true;
                     }
                 }
@@ -64,12 +64,12 @@ public class SimpleHash extends BaseOP {
                 b.putInt(length);
                 b.put(value.getBytes(BaseMedia.CHARSET));
                 b.flip();
-                DataHelper dh = store.add(b);
+                DataHelper dh = dataMedia.add(b);
                 dh.setHash(hash);
                 dh.setType(DataTypeEnum.HASH.getDesc());
                 dh.setKey(field);
                 dh.setLength(length);
-                ih.add(dh);
+                indexHelper.add(dh);
                 return true;
             }
         } catch (Exception e) {
@@ -88,9 +88,9 @@ public class SimpleHash extends BaseOP {
             }
             List<String> resp = new ArrayList<>();
             long start = System.currentTimeMillis();
-            for (Map.Entry<String, DataHelper> e : ((Map<String, DataHelper>) ih.type(hash)).entrySet()) {
+            for (Map.Entry<String, DataHelper> e : ((Map<String, DataHelper>) indexHelper.type(hash)).entrySet()) {
                 if (e.getKey().equals(field))
-                    return store.get(e.getValue());
+                    return dataMedia.get(e.getValue());
             }
             log.debug("key={},value={} cost={}ms", field, resp, (System.currentTimeMillis() - start));
         } catch (Exception e) {
@@ -108,13 +108,13 @@ public class SimpleHash extends BaseOP {
             if (super.isExpire(hash)) {
                 return null;
             }
-            byte[][] data = new byte[((Map) ih.type(hash)).size() * 2][];
+            byte[][] data = new byte[((Map) indexHelper.type(hash)).size() * 2][];
             List<String> resp = new ArrayList<>();
             long start = System.currentTimeMillis();
             int i = 0;
-            for (Map.Entry<String, DataHelper> e : ((Map<String, DataHelper>) ih.type(hash)).entrySet()) {
+            for (Map.Entry<String, DataHelper> e : ((Map<String, DataHelper>) indexHelper.type(hash)).entrySet()) {
                 data[i++] = e.getKey().getBytes();
-                data[i++] = store.get(e.getValue());
+                data[i++] = dataMedia.get(e.getValue());
             }
             log.debug("key={},value={} cost={}ms", hash, resp, (System.currentTimeMillis() - start));
             return data;
@@ -126,14 +126,14 @@ public class SimpleHash extends BaseOP {
 
     @Override
     public boolean checkKeyType(String key) {
-        return isExist(key) ? ih.type(key) instanceof Map : true;
+        return isExist(key) ? indexHelper.type(key) instanceof Map : true;
     }
 
     @Override
     public void removeData(String key) {
-        for (DataHelper d : ((Map<String, DataHelper>) ih.type(key)).values()) {
-            ih.remove(d);
-            store.remove(d);
+        for (DataHelper d : ((Map<String, DataHelper>) indexHelper.type(key)).values()) {
+            indexHelper.remove(d);
+            dataMedia.remove(d);
         }
     }
 }

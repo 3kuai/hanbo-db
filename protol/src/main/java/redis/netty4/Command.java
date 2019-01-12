@@ -26,8 +26,8 @@ public class Command {
     private final boolean inline;
     private int eventType;//1=internal,0=external
 
-    public int getEventType() {
-        return eventType;
+    public boolean isInternal() {
+        return this.eventType == 0;
     }
 
     public void setEventType(int eventType) {

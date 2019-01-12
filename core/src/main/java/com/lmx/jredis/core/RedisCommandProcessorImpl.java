@@ -1,12 +1,12 @@
 package com.lmx.jredis.core;
 
 import com.google.common.collect.Lists;
-import com.lmx.jredis.core.datastruct.RedisDbDelegate;
-import com.lmx.jredis.core.datastruct.SimpleHash;
-import com.lmx.jredis.core.datastruct.SimpleKV;
-import com.lmx.jredis.core.datastruct.SimpleList;
+import com.lmx.jredis.core.datastruct.DatabaseRouter;
+import com.lmx.jredis.core.datastruct.HashStore;
+import com.lmx.jredis.core.datastruct.ValueStore;
+import com.lmx.jredis.core.datastruct.ListStore;
+import com.lmx.jredis.core.queue.BlockingQueueHelper;
 import com.lmx.jredis.core.transaction.AbstractTransactionHandler;
-import com.lmx.jredis.core.transaction.BlockingQueueHelper;
 import com.lmx.jredis.storage.DataHelper;
 import com.lmx.jredis.storage.DataTypeEnum;
 import com.lmx.jredis.storage.IndexHelper;
@@ -42,10 +42,10 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
 
     @Override
     public MultiBulkReply scan(byte[] index0) throws RedisException {
-        RedisDbDelegate.RedisDB store = getRedisDB();
+        DatabaseRouter.RedisDB store = getRedisDB();
         List<BulkReply> replies = new ArrayList<>();
         IndexHelper indexHelper = store.getIndexHelper();
-        Iterator<String> it = indexHelper.getKv().keySet().iterator();
+        Iterator<String> it = indexHelper.getKeyMap().keySet().iterator();
         while (it.hasNext()) {
             String key = it.next();
             byte[] bytes = key.getBytes();
@@ -484,7 +484,7 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
      */
     @Override
     public BulkReply get(byte[] key0) throws RedisException {
-        RedisDbDelegate.RedisDB db = getRedisDB();
+        DatabaseRouter.RedisDB db = getRedisDB();
         Object o = db.getSimpleKV().read(new String(key0));
         if (o instanceof byte[]) {
             return new BulkReply((byte[]) o);
@@ -688,7 +688,7 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
      */
     @Override
     public StatusReply set(byte[] key0, byte[] value1) throws RedisException {
-        RedisDbDelegate.RedisDB kv = getRedisDB();
+        DatabaseRouter.RedisDB kv = getRedisDB();
         return kv.getSimpleKV().write(new String(key0), new String(value1)) ? OK : WRONG_TYPE;
     }
 
@@ -1110,8 +1110,8 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
                 "\n" +
                 "# Keyspace\n");
         int dbCount = 0;
-        for (RedisDbDelegate.RedisDB db : RedisDbDelegate.db.values()) {
-            int dbSize = db.getIndexHelper().kv.size();
+        for (DatabaseRouter.RedisDB db : delegate.getDbMap().values()) {
+            int dbSize = db.getIndexHelper().getKeyMap().size();
             sb.append("db" + (dbCount++) + ":keys=" + dbSize + ",expires=81390,avg_ttl=47463342\n");
         }
         return new BulkReply(sb.toString().getBytes());
@@ -1229,9 +1229,9 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
      */
     @Override
     public MultiBulkReply blpop(byte[][] key0) throws RedisException {
-        SimpleList list = getRedisDB().getSimpleList();
+        ListStore list = getRedisDB().getSimpleList();
         String k = new String(key0[0]);
-        if (list.getIh().type(k) != null && ((List) list.getIh().type(k)).size() > 0) {
+        if (list.getIndexHelper().type(k) != null && ((List) list.getIndexHelper().type(k)).size() > 0) {
             byte[] val = list.popHead(k);
             Reply[] replies = new BulkReply[]{new BulkReply(key0[0]), new BulkReply(val)};
             return new MultiBulkReply(replies);
@@ -1252,9 +1252,9 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
      */
     @Override
     public MultiBulkReply brpop(byte[][] key0) throws RedisException {
-        SimpleList list = getRedisDB().getSimpleList();
+        ListStore list = getRedisDB().getSimpleList();
         String k = new String(key0[0]);
-        if (list.getIh().type(k) != null && ((List) list.getIh().type(k)).size() > 0) {
+        if (list.getIndexHelper().type(k) != null && ((List) list.getIndexHelper().type(k)).size() > 0) {
             byte[] val = list.popTail(k);
             Reply[] replies = new BulkReply[]{new BulkReply(key0[0]), new BulkReply(val)};
             return new MultiBulkReply(replies);
@@ -1335,7 +1335,7 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
      */
     @Override
     public IntegerReply llen(byte[] key0) throws RedisException {
-        SimpleList list = getRedisDB().getSimpleList();
+        ListStore list = getRedisDB().getSimpleList();
         List<byte[]> list_ = list.read(new String(key0), 0, -1);
         if (list_ == null) {
             return IntegerReply.integer(0);
@@ -1371,7 +1371,7 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
      */
     @Override
     public Reply lpush(byte[] key0, byte[][] value1) throws RedisException {
-        SimpleList list = getRedisDB().getSimpleList();
+        ListStore list = getRedisDB().getSimpleList();
         int size = 0;
         for (byte[] value : value1) {
             if (!list.write(new String(key0), new String(value)))
@@ -1411,7 +1411,7 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
      */
     @Override
     public MultiBulkReply lrange(byte[] key0, byte[] start1, byte[] stop2) throws RedisException {
-        SimpleList list = getRedisDB().getSimpleList();
+        ListStore list = getRedisDB().getSimpleList();
         List<byte[]> list_ = list.read(new String(key0), Integer.parseInt(new String(start1)),
                 Integer.parseInt(new String(stop2).compareTo("4294967295") >= 0 ? "-1" : new String(stop2)));
         if (list_ == null) {
@@ -1569,7 +1569,7 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
      */
     @Override
     public Reply rpush(byte[] key0, byte[][] value1) throws RedisException {
-        SimpleList list = (SimpleList) getRedisDB().getSimpleList();
+        ListStore list = (ListStore) getRedisDB().getSimpleList();
         int size = 0;
         for (byte[] value : value1) {
             if (!list.write(new String(key0), new String(value)))
@@ -1608,9 +1608,9 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
     @Override
     public IntegerReply del(byte[][] key0) throws RedisException {
         IndexHelper indexHelper = getRedisDB().getIndexHelper();
-        SimpleKV kv = getRedisDB().getSimpleKV();
-        SimpleList list = getRedisDB().getSimpleList();
-        SimpleHash hash = getRedisDB().getSimpleHash();
+        ValueStore kv = getRedisDB().getSimpleKV();
+        ListStore list = getRedisDB().getSimpleList();
+        HashStore hash = getRedisDB().getSimpleHash();
         int total = 0;
         for (byte[] bytes : key0) {
             String key = new String(bytes);
@@ -1701,7 +1701,7 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
         }
         List<Reply<ByteBuf>> replies = new ArrayList<Reply<ByteBuf>>();
         IndexHelper indexHelper = getRedisDB().getIndexHelper();
-        Iterator<String> it = indexHelper.getKv().keySet().iterator();
+        Iterator<String> it = indexHelper.getKeyMap().keySet().iterator();
         while (it.hasNext()) {
             String key = it.next();
             byte[] bytes = key.getBytes();
@@ -2150,7 +2150,7 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
      */
     @Override
     public BulkReply hget(byte[] key0, byte[] field1) throws RedisException {
-        SimpleHash hash = getRedisDB().getSimpleHash();
+        HashStore hash = getRedisDB().getSimpleHash();
         byte[] bytes = hash.read(new String(key0), new String(field1));
         if (bytes == null) {
             return NIL_REPLY;
@@ -2168,7 +2168,7 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
      */
     @Override
     public MultiBulkReply hgetall(byte[] key0) throws RedisException {
-        SimpleHash hash = getRedisDB().getSimpleHash();
+        HashStore hash = getRedisDB().getSimpleHash();
         byte[][] data = hash.read(new String(key0));
         int size = data.length;
         Reply[] replies = new Reply[size];
@@ -2260,7 +2260,7 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
      */
     @Override
     public IntegerReply hlen(byte[] key0) throws RedisException {
-        SimpleHash hash = getRedisDB().getSimpleHash();
+        HashStore hash = getRedisDB().getSimpleHash();
         byte[][] data = hash.read(new String(key0));
         int size = data.length / 2;
         return integer(size);
@@ -2321,7 +2321,7 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
      */
     @Override
     public Reply hset(byte[] key0, byte[] field1, byte[] value2) throws RedisException {
-        SimpleHash hash = getRedisDB().getSimpleHash();
+        HashStore hash = getRedisDB().getSimpleHash();
         return hash.write(new String(key0), new String(field1), new String(value2)) ? integer(1) : WRONG_TYPE;
     }
 
@@ -2368,7 +2368,7 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
      */
     @Override
     public IntegerReply publish(byte[] channel0, byte[] message1) throws RedisException {
-        bus.pubMsg(new BusHelper.Message().builder().msg(message1).topic(channel0).build());
+        bus.pubMsg(new PubSubHelper.Message().builder().msg(message1).topic(channel0).build());
         return integer(1);
     }
 

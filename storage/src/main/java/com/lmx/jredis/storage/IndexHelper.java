@@ -17,40 +17,41 @@ import java.util.Map;
 @Slf4j
 @EqualsAndHashCode(callSuper = false)
 public abstract class IndexHelper extends BaseMedia {
-    public static final int maxCacheLimit = 1 << 19;
+    private static final int maxCacheLimit = 1 << 19;
     @Getter
-    public Map<String, Object> kv = new LRUCache<>(maxCacheLimit);
-    public Map<String, Long> expire = new LRUCache<>(maxCacheLimit);
+    protected Map<String, Object> keyMap = new LRUCache<>(maxCacheLimit);
+    @Getter
+    protected Map<String, Long> expireMap = new LRUCache<>(maxCacheLimit);
 
     public IndexHelper(int db, String fileName, int size) throws Exception {
         super(db, fileName, size);
     }
 
     public Object type(String key) {
-        return kv.get(key);
+        return keyMap.get(key);
     }
 
     public void setExpire(String key, long timeOut) {
-        expire.put(key, timeOut + System.currentTimeMillis());
+        expireMap.put(key, timeOut + System.currentTimeMillis());
     }
 
     public long getExpire(String key) {
-        if (expire.containsKey(key))
-            return expire.get(key);
+        if (expireMap.containsKey(key))
+            return expireMap.get(key);
         else
             return 0L;
     }
 
     public long rmExpire(String key) {
-        return expire.remove(key);
+        return expireMap.remove(key);
     }
 
     public boolean exist(String key) {
-        return kv.containsKey(key);
+        return keyMap.containsKey(key);
     }
 
     public void remove(String key) {
-        kv.remove(key);
+        keyMap.remove(key);
     }
 
     public void add(DataHelper dh) throws Exception {
@@ -90,17 +91,17 @@ public abstract class IndexHelper extends BaseMedia {
         dh.selfPos = curPos - 2;
         buffer.rewind();
         if (dh.getType().equals(DataTypeEnum.KV.getDesc())) {
-            kv.put(key, dh);
+            keyMap.put(key, dh);
         } else if (dh.getType().equals(DataTypeEnum.LIST.getDesc())) {
-            if (!kv.containsKey(key)) {
-                kv.put(key, new LinkedList<DataHelper>());
+            if (!keyMap.containsKey(key)) {
+                keyMap.put(key, new LinkedList<DataHelper>());
             }
-            ((List) kv.get(key)).add(dh);
+            ((List) keyMap.get(key)).add(dh);
         } else if (dh.getType().equals(DataTypeEnum.HASH.getDesc())) {
-            if (!kv.containsKey(dh.getHash())) {
-                kv.put(dh.getHash(), new HashMap<>());
+            if (!keyMap.containsKey(dh.getHash())) {
+                keyMap.put(dh.getHash(), new HashMap<>());
             }
-            ((Map) kv.get(dh.getHash())).put(key, dh);
+            ((Map) keyMap.get(dh.getHash())).put(key, dh);
         }
     }
 
@@ -145,7 +146,7 @@ public abstract class IndexHelper extends BaseMedia {
             }
             int dataIndex = buffer.getInt();
             int dataLength = buffer.getInt();
-            long expire = buffer.getLong();
+            long expireMap = buffer.getLong();
             char status = buffer.getChar();
             DataHelper dh = new DataHelper();
             dh.key = key;
@@ -153,7 +154,7 @@ public abstract class IndexHelper extends BaseMedia {
             dh.length = dataLength;
             dh.type = type;
             dh.hash = hash_;
-            dh.expire = expire;
+            dh.expire = expireMap;
             dh.selfPos = buffer.position() - 2;
             if (status == NORMAL)
                 wrapData(dh);

@@ -1,11 +1,11 @@
 package com.lmx.jredis.core.transaction;
 
 import com.google.common.base.Charsets;
-import com.lmx.jredis.core.BusHelper;
+import com.lmx.jredis.core.PubSubHelper;
 import com.lmx.jredis.core.RedisCommandInvoker;
 import com.lmx.jredis.core.RedisCommandProcessor;
 import com.lmx.jredis.core.RedisException;
-import com.lmx.jredis.core.datastruct.RedisDbDelegate;
+import com.lmx.jredis.core.datastruct.DatabaseRouter;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
@@ -26,8 +26,8 @@ import static redis.netty4.IntegerReply.integer;
  */
 @Slf4j
 public abstract class AbstractTransactionHandler implements RedisCommandProcessor {
-    protected BusHelper bus;
-    protected RedisDbDelegate delegate;
+    protected PubSubHelper bus;
+    protected DatabaseRouter delegate;
     protected ChannelHandlerContext channelHandlerContext;
     private String transaction = "transactionIdentify";
     private String session = "sessionIdentify";
@@ -111,8 +111,8 @@ public abstract class AbstractTransactionHandler implements RedisCommandProcesso
         this.channelHandlerContext = channelHandlerContext;
     }
 
-    public RedisDbDelegate.RedisDB getRedisDB() {
-        RedisDbDelegate.RedisDB redisDB = (RedisDbDelegate.RedisDB) channelHandlerContext.channel().attr(AttributeKey.valueOf(session)).get();
+    public DatabaseRouter.RedisDB getRedisDB() {
+        DatabaseRouter.RedisDB redisDB = (DatabaseRouter.RedisDB) channelHandlerContext.channel().attr(AttributeKey.valueOf(session)).get();
         return (redisDB == null ? delegate.select(0) : redisDB);
     }
 
@@ -125,7 +125,7 @@ public abstract class AbstractTransactionHandler implements RedisCommandProcesso
      */
     @Override
     public StatusReply select(byte[] index0) throws RedisException {
-        RedisDbDelegate.RedisDB store = delegate.select(Integer.parseInt(new String(index0)));
+        DatabaseRouter.RedisDB store = delegate.select(Integer.parseInt(new String(index0)));
         Attribute attribute = channelHandlerContext.channel().attr(AttributeKey.valueOf(session));
         if (null == store) {
             attribute.set(null);
@@ -140,7 +140,7 @@ public abstract class AbstractTransactionHandler implements RedisCommandProcesso
         return integer(1);
     }
 
-    public void initStore(BusHelper bus, RedisDbDelegate delegate, RedisCommandInvoker invoker) {
+    public void initStore(PubSubHelper bus, DatabaseRouter delegate, RedisCommandInvoker invoker) {
         this.bus = bus;
         this.delegate = delegate;
         this.invoker = invoker;

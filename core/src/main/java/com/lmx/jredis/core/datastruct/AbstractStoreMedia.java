@@ -8,24 +8,24 @@ import lombok.Data;
  * Created by limingxin on 2017/8/7.
  */
 @Data
-public abstract class BaseOP {
-    DataMedia store;
-    IndexHelper ih;
+public abstract class AbstractStoreMedia {
+    protected DataMedia dataMedia;
+    protected IndexHelper indexHelper;
 
     public boolean isExpire(String key) {
-        long time = ih.getExpire(key);
+        long time = indexHelper.getExpire(key);
         if (time == 0)
             return false;
         if (System.currentTimeMillis() - time > 0) {
             remove(key);
-            ih.rmExpire(key);
+            indexHelper.rmExpire(key);
             return true;
         }
         return false;
     }
 
     public boolean isExist(String key) {
-        return ih.exist(key);
+        return indexHelper.exist(key);
     }
 
     public abstract boolean checkKeyType(String key);
@@ -34,7 +34,7 @@ public abstract class BaseOP {
 
     public void remove(String key) {
         removeData(key);
-        ih.kv.remove(key);
+        indexHelper.getKeyMap().remove(key);
     }
 
     public boolean write(String key, String value) throws Exception {

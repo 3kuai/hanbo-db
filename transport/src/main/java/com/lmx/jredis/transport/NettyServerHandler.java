@@ -1,8 +1,8 @@
 package com.lmx.jredis.transport;
 
-import com.lmx.jredis.core.BusHelper;
+import com.lmx.jredis.core.PubSubHelper;
 import com.lmx.jredis.core.RedisCommandInvoker;
-import com.lmx.jredis.core.transaction.BlockingQueueHelper;
+import com.lmx.jredis.core.queue.BlockingQueueHelper;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -23,7 +23,7 @@ import static redis.netty4.StatusReply.QUIT;
 public class NettyServerHandler extends SimpleChannelInboundHandler<Command> {
 
     @Autowired
-    private BusHelper busHelper;
+    private PubSubHelper busHelper;
 
     @Autowired
     private RedisCommandInvoker invoker;

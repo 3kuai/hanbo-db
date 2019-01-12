@@ -1,7 +1,7 @@
 package com.lmx.jredis.core.datastruct;
 
 import com.lmx.jredis.core.RedisException;
-import com.lmx.jredis.core.transaction.BlockingQueueHelper;
+import com.lmx.jredis.core.queue.BlockingQueueHelper;
 import com.lmx.jredis.storage.BaseMedia;
 import com.lmx.jredis.storage.DataHelper;
 import com.lmx.jredis.storage.DataMedia;
@@ -17,19 +17,19 @@ import java.util.List;
  * Created by lmx on 2017/4/14.
  */
 @Slf4j
-public class SimpleList extends BaseOP {
+public class ListStore extends AbstractStoreMedia {
 
-    int storeSize;
+    int dataMediaSize;
 
-    SimpleList(int storeSize) {
-        this.storeSize = storeSize;
+    ListStore(int dataMediaSize) {
+        this.dataMediaSize = dataMediaSize;
     }
 
     public void init(int db) {
         try {
-            store = new DataMedia(db, "listData", storeSize);
+            dataMedia = new DataMedia(db, "listData", dataMediaSize);
         } catch (Exception e) {
-            log.error("init store file error", e);
+            log.error("init dataMedia file error", e);
         }
     }
 
@@ -41,11 +41,11 @@ public class SimpleList extends BaseOP {
                 b.putInt(length);
                 b.put(value.getBytes(BaseMedia.CHARSET));
                 b.flip();
-                DataHelper dh = store.add(b);
+                DataHelper dh = dataMedia.add(b);
                 dh.setType(DataTypeEnum.LIST.getDesc());
                 dh.setKey(key);
                 dh.setLength(length);
-                ih.add(dh);
+                indexHelper.add(dh);
                 BlockingQueueHelper.getInstance().notifyListener(key);
                 return true;
             }
@@ -65,8 +65,8 @@ public class SimpleList extends BaseOP {
             }
             List<byte[]> resp = new ArrayList<>();
             long start = System.currentTimeMillis();
-            for (Object l : (List) (ih.kv).get(key)) {
-                resp.add(store.get((DataHelper) l));
+            for (Object l : (List) (indexHelper.getKeyMap()).get(key)) {
+                resp.add(dataMedia.get((DataHelper) l));
             }
             resp = resp.subList(startIdx, endIdx == -1 ? resp.size() : endIdx+1);
             log.debug("key={},value={} cost={}ms", key, resp, (System.currentTimeMillis() - start));
@@ -79,14 +79,14 @@ public class SimpleList extends BaseOP {
 
     @Override
     public boolean checkKeyType(String key) {
-        return isExist(key) ? ih.type(key) instanceof List : true;
+        return isExist(key) ? indexHelper.type(key) instanceof List : true;
     }
 
     @Override
     public void removeData(String key) {
-        for (DataHelper d : (List<DataHelper>) ih.type(key)) {
-            ih.remove(d);
-            store.remove(d);
+        for (DataHelper d : (List<DataHelper>) indexHelper.type(key)) {
+            indexHelper.remove(d);
+            dataMedia.remove(d);
         }
     }
 
@@ -112,7 +112,7 @@ public class SimpleList extends BaseOP {
         if (!checkKeyType(key)) {
             throw new RedisException("Operation against a key holding the wrong kind of value");
         }
-        List<DataHelper> list = (List<DataHelper>) ih.type(key);
+        List<DataHelper> list = (List<DataHelper>) indexHelper.type(key);
         DataHelper headData = null;
         if (list.size() > 0) {
             if (point == 0)
@@ -120,9 +120,9 @@ public class SimpleList extends BaseOP {
             else if (point == 1)
                 headData = list.remove(0);
         }
-        byte[] val = store.get(headData);
-        store.remove(headData);
-        ih.remove(headData);
+        byte[] val = dataMedia.get(headData);
+        dataMedia.remove(headData);
+        indexHelper.remove(headData);
         return val;
     }
 }

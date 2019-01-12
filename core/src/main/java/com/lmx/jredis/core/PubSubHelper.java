@@ -23,7 +23,7 @@ import java.util.concurrent.*;
  */
 @Slf4j
 @Component
-public class BusHelper {
+public class PubSubHelper {
     Map<BytesKey, ConcurrentHashMap<ChannelHandlerContext, BytesKey>> subscribers = new ConcurrentHashMap<>();
     BlockingQueue<Message> messages = new LinkedBlockingQueue<>();
 

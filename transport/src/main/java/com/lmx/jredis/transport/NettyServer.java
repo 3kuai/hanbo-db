@@ -1,10 +1,10 @@
 package com.lmx.jredis.transport;
 
-import com.lmx.jredis.core.BusHelper;
+import com.lmx.jredis.core.PubSubHelper;
 import com.lmx.jredis.core.RedisCommandInvoker;
 import com.lmx.jredis.core.RedisCommandProcessor;
 import com.lmx.jredis.core.RedisCommandProcessorImpl;
-import com.lmx.jredis.core.datastruct.RedisDbDelegate;
+import com.lmx.jredis.core.datastruct.DatabaseRouter;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
@@ -38,11 +38,11 @@ public class NettyServer {
     private EventLoopGroup bossGroup;
     private EventLoopGroup workerGroup;
     @Autowired
-    private BusHelper busHelper;
+    private PubSubHelper busHelper;
     @Autowired
     private NettyServerHandler nettyServerHandler;
     @Autowired
-    private RedisDbDelegate delegate;
+    private DatabaseRouter delegate;
     @Autowired
     private RedisCommandInvoker invoker;
 

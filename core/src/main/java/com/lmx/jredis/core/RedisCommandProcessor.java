@@ -1,6 +1,6 @@
 package com.lmx.jredis.core;
 
-import com.lmx.jredis.core.datastruct.RedisDbDelegate;
+import com.lmx.jredis.core.datastruct.DatabaseRouter;
 import io.netty.channel.ChannelHandlerContext;
 import redis.netty4.*;
 
@@ -60,7 +60,7 @@ public interface RedisCommandProcessor {
      * @param delegate
      * @param invoker
      */
-    void initStore(BusHelper bus, RedisDbDelegate delegate, RedisCommandInvoker invoker);
+    void initStore(PubSubHelper bus, DatabaseRouter delegate, RedisCommandInvoker invoker);
 
     /**
      * Append a value to a key

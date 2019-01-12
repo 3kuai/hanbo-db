@@ -13,28 +13,28 @@ import java.nio.ByteBuffer;
  * Created by lmx on 2017/4/14.
  */
 @Slf4j
-public class SimpleKV extends BaseOP {
-    int storeSize;
+public class ValueStore extends AbstractStoreMedia {
+    int dataMediaSize;
 
-    SimpleKV(int storeSize) {
-        this.storeSize = storeSize;
+    ValueStore(int dataMediaSize) {
+        this.dataMediaSize = dataMediaSize;
     }
 
     public void init(int db) {
         try {
-            store = new DataMedia(db, "valueData", storeSize);
+            dataMedia = new DataMedia(db, "valueData", dataMediaSize);
         } catch (Exception e) {
-            log.error("init store file error", e);
+            log.error("init dataMedia file error", e);
         }
     }
 
     public boolean write(String key, String value) {
         try {
             if (super.write(key, value)) {
-                DataHelper dataHelper = (DataHelper) ih.type(key);
+                DataHelper dataHelper = (DataHelper) indexHelper.type(key);
                 if (dataHelper != null) {
-                    dataHelper = store.update(dataHelper, value.getBytes(Charsets.UTF_8));
-                    ih.updateIndex(dataHelper);
+                    dataHelper = dataMedia.update(dataHelper, value.getBytes(Charsets.UTF_8));
+                    indexHelper.updateIndex(dataHelper);
                     return true;
                 } else {
                     ByteBuffer b = ByteBuffer.allocateDirect(128);
@@ -42,10 +42,10 @@ public class SimpleKV extends BaseOP {
                     b.putInt(length);
                     b.put(value.getBytes(Charsets.UTF_8));
                     b.flip();
-                    DataHelper dh = store.add(b);
+                    DataHelper dh = dataMedia.add(b);
                     dh.setKey(key);
                     dh.setLength(length);
-                    ih.add(dh);
+                    indexHelper.add(dh);
                     return true;
                 }
             }
@@ -64,7 +64,7 @@ public class SimpleKV extends BaseOP {
                 return null;
             }
             long start = System.currentTimeMillis();
-            byte[] data = store.get((DataHelper) ih.type(key));
+            byte[] data = dataMedia.get((DataHelper) indexHelper.type(key));
             String resp = new String(data, Charsets.UTF_8);
             log.debug("key={},value={} cost={}ms", key, resp, (System.currentTimeMillis() - start));
             return data;
@@ -76,13 +76,13 @@ public class SimpleKV extends BaseOP {
 
     @Override
     public boolean checkKeyType(String key) {
-        return isExist(key) ? ih.type(key) instanceof DataHelper : true;
+        return isExist(key) ? indexHelper.type(key) instanceof DataHelper : true;
     }
 
     @Override
     public void removeData(String key) {
-        DataHelper dataHelper = (DataHelper) ih.type(key);
-        ih.remove(dataHelper);
-        store.remove(dataHelper);
+        DataHelper dataHelper = (DataHelper) indexHelper.type(key);
+        indexHelper.remove(dataHelper);
+        dataMedia.remove(dataHelper);
     }
 }

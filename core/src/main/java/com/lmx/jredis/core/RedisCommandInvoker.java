@@ -34,21 +34,21 @@ public class RedisCommandInvoker {
         this.rs = rss;
         final Class<? extends RedisCommandProcessor> aClass = rs.getClass();
         for (final Method method : aClass.getMethods()) {
-            final Class<?>[] types = method.getParameterTypes();
+            final Class<?>[] parameterTypes = method.getParameterTypes();
             final String mName = method.getName();
             methods.put(new BytesKey(mName.getBytes()), new Wrapper() {
                 @Override
                 public Reply execute(Command command, ChannelHandlerContext ch) {
-                    Object[] objects = new Object[types.length];
+                    Object[] objects = new Object[parameterTypes.length];
                     long start = System.currentTimeMillis();
                     try {
-                        command.toArguments(objects, types);
+                        command.toArguments(objects, parameterTypes);
                         //check param
-                        if (command.getObjects().length - 1 < types.length) {
+                        if (command.getObjects().length - 1 < parameterTypes.length) {
                             throw new RedisException("wrong number of arguments for '" + mName + "' command");
                         }
                         rs.setChannelHandlerContext(ch);
-                        if (rs.hasOpenTx() && command.getEventType() == 0) {
+                        if (rs.hasOpenTx() && command.isInternal()) {
                             return rs.handlerTxOp(command);
                         } else {
                             return (Reply) method.invoke(rs, objects);

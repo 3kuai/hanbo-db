@@ -1,9 +1,9 @@
-package com.lmx.jredis.core.transaction;
+package com.lmx.jredis.core.queue;
 
 import com.google.common.collect.Lists;
 import com.lmx.jredis.core.RedisCommandProcessorImpl;
 import com.lmx.jredis.core.RedisException;
-import com.lmx.jredis.core.datastruct.SimpleList;
+import com.lmx.jredis.core.datastruct.ListStore;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.Attribute;
 import io.netty.util.concurrent.DefaultEventExecutor;
@@ -23,8 +23,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class BlockingQueueHelper {
     private static final BlockingQueueHelper instance = new BlockingQueueHelper();
-    private static final Map<String, List<ChannelHandlerContext>> queues = new ConcurrentHashMap<>();
-    private static final Map<String, SimpleList> routers = new ConcurrentHashMap<>();
+    private static final Map<String, List<ChannelHandlerContext>> listenerMap = new ConcurrentHashMap<>();
+    private static final Map<String, ListStore> listenerRouters = new ConcurrentHashMap<>();
     private static final DefaultEventExecutor defaultEventExecutor = new DefaultEventExecutor();
 
     public static BlockingQueueHelper getInstance() {
@@ -39,10 +39,10 @@ public class BlockingQueueHelper {
             @Override
             public void run() {
                 try {
-                    for (Map.Entry<String, SimpleList> entry : routers.entrySet()) {
+                    for (Map.Entry<String, ListStore> entry : listenerRouters.entrySet()) {
                         String k = entry.getKey();
-                        if (queues.containsKey(k)) {
-                            SimpleList v = entry.getValue();
+                        if (listenerMap.containsKey(k)) {
+                            ListStore v = entry.getValue();
                             //only once read a element
                             List<byte[]> list_ = v.read(k, 0, 1);
                             if (!CollectionUtils.isEmpty(list_)) {
@@ -51,12 +51,12 @@ public class BlockingQueueHelper {
                                     replies[i] = new BulkReply(list_.get(i));
                                 }
                                 //random assign a channel to receive data
-                                List<ChannelHandlerContext> contextList = queues.get(k);
+                                List<ChannelHandlerContext> contextList = listenerMap.get(k);
                                 int randomVal = new Random().nextInt(contextList.size());
                                 contextList.get(randomVal).writeAndFlush(new MultiBulkReply(replies));
                                 contextList.remove(randomVal);
                                 if (contextList.size() == 0)
-                                    queues.clear();
+                                    listenerMap.clear();
                             }
                         }
                     }
@@ -68,9 +68,9 @@ public class BlockingQueueHelper {
     }
 
     public void notifyListener(String key) {
-        if (queues.containsKey(key)) {
-            List<ChannelHandlerContext> contextList = queues.get(key);
-            SimpleList v = routers.get(key);
+        if (listenerMap.containsKey(key)) {
+            List<ChannelHandlerContext> contextList = listenerMap.get(key);
+            ListStore v = listenerRouters.get(key);
             //random assign a channel to receive data
             int randomVal = new Random().nextInt(contextList.size());
             Attribute attribute = contextList.get(randomVal).channel().attr(RedisCommandProcessorImpl.attributeKey);
@@ -87,24 +87,24 @@ public class BlockingQueueHelper {
                 contextList.get(randomVal).writeAndFlush(new MultiBulkReply(replies));
                 contextList.remove(randomVal);
                 if (contextList.size() == 0) {
-                    queues.clear();
-                    routers.clear();
+                    listenerMap.clear();
+                    listenerRouters.clear();
                 }
             }
         }
     }
 
     public void regListener(ChannelHandlerContext channelHandlerContext,
-                            String list, SimpleList simpleList) {
-        if (!queues.containsKey(list)) {
-            queues.put(list, Lists.newArrayList(channelHandlerContext));
-            routers.put(list, simpleList);
+                            String list, ListStore simpleList) {
+        if (!listenerMap.containsKey(list)) {
+            listenerMap.put(list, Lists.newArrayList(channelHandlerContext));
+            listenerRouters.put(list, simpleList);
         } else
-            queues.get(list).add(channelHandlerContext);
+            listenerMap.get(list).add(channelHandlerContext);
     }
 
     public void remListener(ChannelHandlerContext channelHandlerContext) {
-        queues.values().remove(channelHandlerContext);
+        listenerMap.values().remove(channelHandlerContext);
     }
 
 }
