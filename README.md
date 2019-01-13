@@ -25,3 +25,10 @@ redis of java implement
     based on netty 4
 ### event model
     single accepter and single worker
+
+### build server
+    cd jredis && maven clean install
+### run server
+ jredis build in a springboot application,so easy to run like follow
+ 
+    java -jar jredis-{version}.jar
