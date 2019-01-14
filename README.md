@@ -1,20 +1,27 @@
 # jredis
-redis of java implement
+redis of java implemented,same as a redis server.
 
 ## features
-  
+support command
+
     1.set get
     2.lpush rpush lrange blpop brpop llen
     3.hset hget hgetall hscan
     4.pub sub
-    5.keys scan expire del
+    5.select keys scan expire del
     6.multi exec discard
+    7.incr incrby
     ....
     
-    7.support redisDesktop management tool with v0.9+
+## CLI TOOL
+    support jedis,spring-data-redis,spring-boot-starter-redis
+    support redisDesktop management tool with v0.9+
     
 ## architecture
-### storage
+only keys be used in RAM,the value is lazy load
+### evict policy
+    LRU algorithm
+### linear storage
     1.based on MappedByteBuffer
     2.fixed length unit,head 4 byte write in last item position,and then each item write in 4 byte with it bytes length and actual byte number.
     3.key and value are seperated in storage
@@ -24,11 +31,14 @@ redis of java implement
 ### transport
     based on netty 4
 ### event model
-    single accepter and single worker
-
+    single thread model
 ### build server
     cd jredis && maven clean install
 ### run server
  jredis build in a springboot application,so easy to run like follow
  
     java -jar jredis-{version}.jar
+### Contact me
+    qq:285980382
+    weixin:15821303235
+    email:285980382@qq.com

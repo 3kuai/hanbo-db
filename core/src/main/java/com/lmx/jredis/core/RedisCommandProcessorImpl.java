@@ -3,8 +3,8 @@ package com.lmx.jredis.core;
 import com.google.common.collect.Lists;
 import com.lmx.jredis.core.datastruct.DatabaseRouter;
 import com.lmx.jredis.core.datastruct.HashStore;
-import com.lmx.jredis.core.datastruct.ValueStore;
 import com.lmx.jredis.core.datastruct.ListStore;
+import com.lmx.jredis.core.datastruct.ValueStore;
 import com.lmx.jredis.core.queue.BlockingQueueHelper;
 import com.lmx.jredis.core.transaction.AbstractTransactionHandler;
 import com.lmx.jredis.storage.DataHelper;
@@ -29,6 +29,7 @@ import static redis.util.Encoding.numToBytes;
 
 public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
     public static AttributeKey attributeKey = AttributeKey.newInstance("popPosition");
+    private final static int CURSOR = 10000;
 
     @Override
     public MultiBulkReply hscan(byte[] hash) throws RedisException {
@@ -569,7 +570,18 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
      */
     @Override
     public IntegerReply incr(byte[] key0) throws RedisException {
-        return _change(key0, 1);
+        DatabaseRouter.RedisDB db = getRedisDB();
+        Object o = db.getSimpleKV().read(new String(key0));
+        if (o instanceof byte[]) {
+            try {
+                long integer = bytesToNum((byte[]) o) + 1;
+                set(key0, numToBytes(integer, false));
+                return integer(integer);
+            } catch (IllegalArgumentException e) {
+                throw new RedisException(e.getMessage());
+            }
+        }
+        return integer(0);
     }
 
     /**
@@ -582,7 +594,18 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
      */
     @Override
     public IntegerReply incrby(byte[] key0, byte[] increment1) throws RedisException {
-        return _change(key0, bytesToNum(increment1));
+        DatabaseRouter.RedisDB db = getRedisDB();
+        Object o = db.getSimpleKV().read(new String(key0));
+        if (o instanceof byte[]) {
+            try {
+                long integer = bytesToNum((byte[]) o) + bytesToNum(increment1);
+                set(key0, numToBytes(integer, false));
+                return integer(integer);
+            } catch (IllegalArgumentException e) {
+                throw new RedisException(e.getMessage());
+            }
+        }
+        return integer(0);
     }
 
     /**
