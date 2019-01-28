@@ -18,9 +18,9 @@ support command
     support redisDesktop management tool with v0.9+
     
 ## architecture
-only keys be used in RAM,the value is lazy 
-[storage design](https://github.com/lmx1989219/jredis/storage-design.png)
-[buffer-structure](https://github.com/lmx1989219/jredis/buffer-structure.png)
+only keys be used in RAM,the value is lazy load
+[storage design](https://github.com/lmx1989219/jredis/blob/master/storage-design.png)
+[buffer-structure](https://github.com/lmx1989219/jredis/blob/master/buffer-structure.png)
 ### evict policy
     LRU algorithm
 ### linear storage
@@ -40,7 +40,4 @@ only keys be used in RAM,the value is lazy
  jredis build in a springboot application,so easy to run like follow
  
     java -jar jredis-{version}.jar
-### Contact me
-    qq:285980382
-    weixin:15821303235
-    email:285980382@qq.com
+    
