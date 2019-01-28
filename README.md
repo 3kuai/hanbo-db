@@ -18,7 +18,9 @@ support command
     support redisDesktop management tool with v0.9+
     
 ## architecture
-only keys be used in RAM,the value is lazy load
+only keys be used in RAM,the value is lazy 
+[storage design](https://github.com/lmx1989219/jredis/storage-design.png)
+[buffer-structure](https://github.com/lmx1989219/jredis/buffer-structure.png)
 ### evict policy
     LRU algorithm
 ### linear storage
