@@ -13,12 +13,12 @@ supported command list
     7.incr incrby
     ....
     
-## CLI TOOL
-    support jedis,spring-data-redis,spring-boot-starter-redis
-    support redisDesktop management tool with v0.9+
+## client side
+    compat jedis,spring-data-redis,spring-boot-starter-redis
+    compat redisDesktop management tool with v0.9+
     
 ## architecture
-only keys be used in RAM,the value is lazy load
+only keys be used in JVM
 
 ![storage design](https://github.com/lmx1989219/jredis/blob/master/storage-design.png)
 
@@ -31,12 +31,6 @@ only keys be used in RAM,the value is lazy load
     2.fixed unit size ,head 4 byte write in last item position,
     and then each item write in 4 byte with it bytes length and actually bytes.
     3.key and value are seperated in storage
-### protocol
-    redis protocol
-### transport
-    based on netty 4
-### thread model
-    single worker
 ### build server
     cd jredis && mvn clean install
 ### run server
