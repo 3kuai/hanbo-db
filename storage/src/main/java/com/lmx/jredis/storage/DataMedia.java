@@ -23,6 +23,9 @@ public class DataMedia extends BaseMedia {
             buffer.position(pos);
         else
             buffer.position(4);
+        //TODO need to reallocate buffer
+        if (buffer.capacity() - pos < 4)
+            throw new RuntimeException("exceed max storage limited exception");
         buffer.put(b);
         buffer.putChar(NORMAL);
         DataHelper dh = new DataHelper();
