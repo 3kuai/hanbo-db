@@ -1,3 +1,5 @@
+[]()[中文](https://github.com/3kuai/jredis/edit/master/README-cn.md)
+[]()[english](https://github.com/3kuai/jredis/edit/master/README.md)
 # HanboDB
 redis of java implemented, as same as a redis server.
 
