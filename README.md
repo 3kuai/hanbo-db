@@ -1,5 +1,5 @@
-# jredis
-redis of java implemented,same as a redis server.
+# HanboDB
+redis of java implemented, as same as a redis server.
 
 ## features
 supported command list
@@ -29,7 +29,7 @@ only keys be used in JVM
 ### linear storage
     1.based on jdk's MappedByteBuffer
     2.fixed unit size ,head 4 byte write in last item position,
-    and then each item write in 4 byte with it bytes length and actually bytes.
+    and then each item write in 4 byte with it bytes length and actually bytes(TLV).
     3.key and value are seperated in storage
 ### build server
     cd jredis && mvn clean install
