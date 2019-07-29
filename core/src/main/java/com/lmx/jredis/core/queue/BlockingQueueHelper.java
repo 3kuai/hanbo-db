@@ -3,7 +3,7 @@ package com.lmx.jredis.core.queue;
 import com.google.common.collect.Lists;
 import com.lmx.jredis.core.RedisCommandProcessorImpl;
 import com.lmx.jredis.core.RedisException;
-import com.lmx.jredis.core.datastruct.ListStore;
+import com.lmx.jredis.core.dtype.ListStore;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.Attribute;
 import io.netty.util.concurrent.DefaultEventExecutor;

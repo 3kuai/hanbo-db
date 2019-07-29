@@ -1,4 +1,4 @@
-package com.lmx.jredis.core.datastruct;
+package com.lmx.jredis.core.dtype;
 
 import com.lmx.jredis.storage.DataMedia;
 import com.lmx.jredis.storage.IndexHelper;

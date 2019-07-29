@@ -5,7 +5,7 @@ import com.lmx.jredis.core.PubSubHelper;
 import com.lmx.jredis.core.RedisCommandInvoker;
 import com.lmx.jredis.core.RedisCommandProcessor;
 import com.lmx.jredis.core.RedisException;
-import com.lmx.jredis.core.datastruct.DatabaseRouter;
+import com.lmx.jredis.core.dtype.DatabaseRouter;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;

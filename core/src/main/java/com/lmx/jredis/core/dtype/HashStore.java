@@ -1,4 +1,4 @@
-package com.lmx.jredis.core.datastruct;
+package com.lmx.jredis.core.dtype;
 
 import com.google.common.base.Charsets;
 import com.lmx.jredis.core.RedisException;

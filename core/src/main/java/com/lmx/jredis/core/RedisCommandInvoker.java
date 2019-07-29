@@ -43,7 +43,7 @@ public class RedisCommandInvoker {
     @Autowired
     private PubSubHelper pubSubHelper;
     final static byte[] repKey = "replication".getBytes();
-    Jedis jedis;
+    private Jedis jedis;
 
     private Thread replication = new Thread(new Runnable() {
         @Override
@@ -52,24 +52,33 @@ public class RedisCommandInvoker {
                 try {
                     Command command = repQueue.take();
                     byte[] data = SerializationUtil.serialize(command);
-                    ByteBuf byteBuf = Unpooled.buffer(32);
+                    ByteBuf byteBuf = Unpooled.buffer(4 + data.length);
                     byteBuf.writeInt(data.length);
                     byteBuf.writeBytes(data);
-                    HostAndPort hostAndPort = HostAndPort.fromString(slaverHost);
-                    jedis = new Jedis(hostAndPort.getHostText(), hostAndPort.getPort());
+                    if (jedis == null || jedis.isConnected())
+                        initRedisConn();
                     jedis.publish(repKey, byteBuf.array());
-                    jedis.close();
                 } catch (Exception e) {
                     log.error("", e);
+                    jedis.close();
+                    initRedisConn();
+
                 }
             }
         }
     });
 
+    void initRedisConn() {
+        HostAndPort hostAndPort = HostAndPort.fromString(slaverHost);
+        jedis = new Jedis(hostAndPort.getHostText(), hostAndPort.getPort());
+    }
+
     @PostConstruct
     public void initThread() {
-        replication.setName("replicationTask");
-        replication.start();
+        if (replicationMode.equals("master")) {
+            replication.setName("replicationTask");
+            replication.start();
+        }
     }
 
     public interface Wrapper {

@@ -1,10 +1,10 @@
 package com.lmx.jredis.core;
 
 import com.google.common.collect.Lists;
-import com.lmx.jredis.core.datastruct.DatabaseRouter;
-import com.lmx.jredis.core.datastruct.HashStore;
-import com.lmx.jredis.core.datastruct.ListStore;
-import com.lmx.jredis.core.datastruct.ValueStore;
+import com.lmx.jredis.core.dtype.DatabaseRouter;
+import com.lmx.jredis.core.dtype.HashStore;
+import com.lmx.jredis.core.dtype.ListStore;
+import com.lmx.jredis.core.dtype.ValueStore;
 import com.lmx.jredis.core.queue.BlockingQueueHelper;
 import com.lmx.jredis.core.transaction.AbstractTransactionHandler;
 import com.lmx.jredis.storage.DataHelper;

@@ -1,6 +1,6 @@
 package com.lmx.jredis.core;
 
-import com.lmx.jredis.core.datastruct.DatabaseRouter;
+import com.lmx.jredis.core.dtype.DatabaseRouter;
 import io.netty.channel.ChannelHandlerContext;
 import redis.netty4.*;
 

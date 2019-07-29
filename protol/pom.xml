@@ -11,7 +11,7 @@
 
     <artifactId>proto</artifactId>
 
-    <dependencies>        <!-- Protostuff -->
+    <dependencies>
         <!-- Protostuff -->
         <dependency>
             <groupId>com.dyuproject.protostuff</groupId>

@@ -1,12 +1,10 @@
-package com.lmx.jredis.core.datastruct;
+package com.lmx.jredis.core.dtype;
 
 import com.google.common.base.Charsets;
 import com.lmx.jredis.core.RedisException;
 import com.lmx.jredis.storage.DataHelper;
 import com.lmx.jredis.storage.DataMedia;
 import lombok.extern.slf4j.Slf4j;
-import redis.reply.BulkReply;
-import redis.reply.Reply;
 
 import java.nio.ByteBuffer;
 

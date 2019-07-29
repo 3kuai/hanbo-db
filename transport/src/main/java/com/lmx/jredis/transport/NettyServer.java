@@ -4,7 +4,7 @@ import com.lmx.jredis.core.PubSubHelper;
 import com.lmx.jredis.core.RedisCommandInvoker;
 import com.lmx.jredis.core.RedisCommandProcessor;
 import com.lmx.jredis.core.RedisCommandProcessorImpl;
-import com.lmx.jredis.core.datastruct.DatabaseRouter;
+import com.lmx.jredis.core.dtype.DatabaseRouter;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
