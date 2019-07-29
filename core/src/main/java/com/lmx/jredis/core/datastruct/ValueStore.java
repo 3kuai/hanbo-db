@@ -5,6 +5,8 @@ import com.lmx.jredis.core.RedisException;
 import com.lmx.jredis.storage.DataHelper;
 import com.lmx.jredis.storage.DataMedia;
 import lombok.extern.slf4j.Slf4j;
+import redis.reply.BulkReply;
+import redis.reply.Reply;
 
 import java.nio.ByteBuffer;
 
@@ -64,7 +66,11 @@ public class ValueStore extends AbstractStoreMedia {
                 return null;
             }
             long start = System.currentTimeMillis();
-            byte[] data = dataMedia.get((DataHelper) indexHelper.type(key));
+            DataHelper idx = (DataHelper) indexHelper.type(key);
+            if (idx == null) {
+                return null;
+            }
+            byte[] data = dataMedia.get(idx);
             String resp = new String(data, Charsets.UTF_8);
             log.debug("key={},value={} cost={}ms", key, resp, (System.currentTimeMillis() - start));
             return data;

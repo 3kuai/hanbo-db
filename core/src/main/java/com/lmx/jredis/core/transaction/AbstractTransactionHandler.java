@@ -34,12 +34,12 @@ public abstract class AbstractTransactionHandler implements RedisCommandProcesso
     private RedisCommandInvoker invoker;
     private AttributeKey txErrorAttr = AttributeKey.valueOf("txError");
 
-    public Attribute getTxAttribute() {
-        return channelHandlerContext.channel().attr(AttributeKey.valueOf(transaction));
-    }
-
     public boolean hasOpenTx() {
         return getTxAttribute().get() != null;
+    }
+
+    public Attribute getTxAttribute() {
+        return channelHandlerContext.channel().attr(AttributeKey.valueOf(transaction));
     }
 
 

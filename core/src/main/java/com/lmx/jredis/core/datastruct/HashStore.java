@@ -35,6 +35,20 @@ public class HashStore extends AbstractStoreMedia {
         }
     }
 
+    void putVal(String hash, String field, String value) throws Exception {
+        ByteBuffer b = ByteBuffer.allocateDirect(128);
+        int length = value.getBytes().length;
+        b.putInt(length);
+        b.put(value.getBytes(BaseMedia.CHARSET));
+        b.flip();
+        DataHelper dh = dataMedia.add(b);
+        dh.setHash(hash);
+        dh.setType(DataTypeEnum.HASH.getDesc());
+        dh.setKey(field);
+        dh.setLength(length);
+        indexHelper.add(dh);
+    }
+
     public boolean write(String hash, String field, String value) {
         try {
             if (super.write(field, value)) {
@@ -45,31 +59,11 @@ public class HashStore extends AbstractStoreMedia {
                         indexHelper.updateIndex(map.get(field));
                         return true;
                     } else {
-                        ByteBuffer b = ByteBuffer.allocateDirect(128);
-                        int length = value.getBytes().length;
-                        b.putInt(length);
-                        b.put(value.getBytes(BaseMedia.CHARSET));
-                        b.flip();
-                        DataHelper dh = dataMedia.add(b);
-                        dh.setHash(hash);
-                        dh.setType(DataTypeEnum.HASH.getDesc());
-                        dh.setKey(field);
-                        dh.setLength(length);
-                        indexHelper.add(dh);
+                        putVal(hash, field, value);
                         return true;
                     }
                 }
-                ByteBuffer b = ByteBuffer.allocateDirect(128);
-                int length = value.getBytes().length;
-                b.putInt(length);
-                b.put(value.getBytes(BaseMedia.CHARSET));
-                b.flip();
-                DataHelper dh = dataMedia.add(b);
-                dh.setHash(hash);
-                dh.setType(DataTypeEnum.HASH.getDesc());
-                dh.setKey(field);
-                dh.setLength(length);
-                indexHelper.add(dh);
+                putVal(hash, field, value);
                 return true;
             }
         } catch (Exception e) {
@@ -88,7 +82,10 @@ public class HashStore extends AbstractStoreMedia {
             }
             List<String> resp = new ArrayList<>();
             long start = System.currentTimeMillis();
-            for (Map.Entry<String, DataHelper> e : ((Map<String, DataHelper>) indexHelper.type(hash)).entrySet()) {
+            Object idx = indexHelper.type(hash);
+            if (idx == null)
+                return null;
+            for (Map.Entry<String, DataHelper> e : ((Map<String, DataHelper>) idx).entrySet()) {
                 if (e.getKey().equals(field))
                     return dataMedia.get(e.getValue());
             }

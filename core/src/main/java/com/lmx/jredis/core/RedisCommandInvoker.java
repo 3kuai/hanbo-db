@@ -1,18 +1,27 @@
 package com.lmx.jredis.core;
 
 import com.google.common.base.Charsets;
+import com.google.common.net.HostAndPort;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import redis.SerializationUtil;
+import redis.clients.jedis.Jedis;
 import redis.netty4.Command;
 import redis.netty4.ErrorReply;
 import redis.netty4.Reply;
 import redis.util.BytesKey;
 
+import javax.annotation.PostConstruct;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * @author : lucas
@@ -25,6 +34,43 @@ public class RedisCommandInvoker {
     private static final byte LOWER_DIFF = 'a' - 'A';
     private RedisCommandProcessor rs;
     public static final Map<BytesKey, Wrapper> methods = new ConcurrentHashMap<>();
+
+    private LinkedBlockingQueue<Command> repQueue = new LinkedBlockingQueue<>(2 << 16);
+    @Value("${replication.mode:master}")
+    private String replicationMode;
+    @Value("${slaver.host:127.0.0.1:16380}")
+    private String slaverHost;
+    @Autowired
+    private PubSubHelper pubSubHelper;
+    final static byte[] repKey = "replication".getBytes();
+    Jedis jedis;
+
+    private Thread replication = new Thread(new Runnable() {
+        @Override
+        public void run() {
+            while (true) {
+                try {
+                    Command command = repQueue.take();
+                    byte[] data = SerializationUtil.serialize(command);
+                    ByteBuf byteBuf = Unpooled.buffer(32);
+                    byteBuf.writeInt(data.length);
+                    byteBuf.writeBytes(data);
+                    HostAndPort hostAndPort = HostAndPort.fromString(slaverHost);
+                    jedis = new Jedis(hostAndPort.getHostText(), hostAndPort.getPort());
+                    jedis.publish(repKey, byteBuf.array());
+                    jedis.close();
+                } catch (Exception e) {
+                    log.error("", e);
+                }
+            }
+        }
+    });
+
+    @PostConstruct
+    public void initThread() {
+        replication.setName("replicationTask");
+        replication.start();
+    }
 
     public interface Wrapper {
         Reply execute(Command command, ChannelHandlerContext ch) throws RedisException;
@@ -48,9 +94,14 @@ public class RedisCommandInvoker {
                             throw new RedisException("wrong number of arguments for '" + mName + "' command");
                         }
                         rs.setChannelHandlerContext(ch);
-                        if (rs.hasOpenTx() && command.isInternal()) {
+                        if (ch != null && rs.hasOpenTx() && command.isInternal()) {
                             return rs.handlerTxOp(command);
                         } else {
+                            if (replicationMode.equals("master")) {
+                                repQueue.offer(command);
+                            } else {
+                                pubSubHelper.regSubscriber(ch, repKey);
+                            }
                             return (Reply) method.invoke(rs, objects);
                         }
                     } catch (Exception e) {
@@ -91,4 +142,5 @@ public class RedisCommandInvoker {
         }
         return reply;
     }
+
 }

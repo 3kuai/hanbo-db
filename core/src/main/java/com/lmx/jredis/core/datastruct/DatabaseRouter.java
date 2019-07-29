@@ -34,7 +34,9 @@ public class DatabaseRouter {
     private Map<Integer, RedisDB> dbMap = new ConcurrentHashMap<>();
 
     public RedisDB select(int dbMapInx) {
-        return dbMap.get(dbMapInx);
+        RedisDB db = dbMap.get(dbMapInx);
+        db.getIndexHelper().setIndex(dbMapInx);
+        return db;
     }
 
     @PostConstruct

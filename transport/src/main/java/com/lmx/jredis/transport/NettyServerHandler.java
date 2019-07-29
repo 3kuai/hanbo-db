@@ -55,21 +55,30 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<Command> {
     }
 
     @Override
-    public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
+    public void channelReadComplete(ChannelHandlerContext ctx) {
         ctx.flush();
     }
 
     @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-        super.channelInactive(ctx);
+    public void channelInactive(ChannelHandlerContext ctx) {
+        releaseConn(ctx);
+    }
+
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+        releaseConn(ctx);
+    }
+
+    void releaseConn(ChannelHandlerContext ctx) {
         busHelper.unSubscriber(ctx);
         BlockingQueueHelper.getInstance().remListener(ctx);
         ctx.close();
     }
 
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        busHelper.unSubscriber(ctx);
-        BlockingQueueHelper.getInstance().remListener(ctx);
-        ctx.close();
+    @Override
+    public void channelWritabilityChanged(ChannelHandlerContext ctx) throws Exception {
+        boolean isWrite = ctx.channel().isWritable();
+        //if the out buffer size > higherMarker,then false
+        if (!isWrite)
+            System.err.println("warning!out bound buffer not be send...");
     }
 }

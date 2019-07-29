@@ -62,6 +62,9 @@ public abstract class IndexHelper extends BaseMedia {
             buffer.position(indexPos);
         else
             buffer.position(4);
+
+        resize(indexPos);
+
         String key = dh.key;
         byte[] keyBytes = key.getBytes(CHARSET);
         int pos = dh.pos;
@@ -71,6 +74,7 @@ public abstract class IndexHelper extends BaseMedia {
 
         String type = dh.type;
         byte[] typeBytes = type.getBytes(CHARSET);
+
         buffer.putInt(typeBytes.length);
         buffer.put(typeBytes);
         byte[] hb;

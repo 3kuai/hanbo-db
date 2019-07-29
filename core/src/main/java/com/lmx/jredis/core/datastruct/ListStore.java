@@ -65,10 +65,13 @@ public class ListStore extends AbstractStoreMedia {
             }
             List<byte[]> resp = new ArrayList<>();
             long start = System.currentTimeMillis();
-            for (Object l : (List) (indexHelper.getKeyMap()).get(key)) {
+            Object idx = indexHelper.type(key);
+            if (idx == null)
+                return null;
+            for (Object l : (List) (idx)) {
                 resp.add(dataMedia.get((DataHelper) l));
             }
-            resp = resp.subList(startIdx, endIdx == -1 ? resp.size() : endIdx+1);
+            resp = resp.subList(startIdx, endIdx == -1 ? resp.size() : endIdx + 1);
             log.debug("key={},value={} cost={}ms", key, resp, (System.currentTimeMillis() - start));
             return resp;
         } catch (Exception e) {

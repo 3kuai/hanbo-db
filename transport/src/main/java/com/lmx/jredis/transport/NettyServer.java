@@ -29,11 +29,11 @@ import javax.annotation.PreDestroy;
 @Slf4j
 public class NettyServer {
 
-    @Value("${rpcServer.host:0.0.0.0}")
+    @Value("${server.host:0.0.0.0}")
     private String host;
-    @Value("${rpcServer.backlog:1024}")
+    @Value("${server.backlog:1024}")
     private int backlog;
-    @Value("${rpcServer.port:16990}")
+    @Value("${server.port:16990}")
     private int port;
     private EventLoopGroup bossGroup;
     private EventLoopGroup workerGroup;
@@ -52,7 +52,7 @@ public class NettyServer {
         workerGroup = new NioEventLoopGroup(1);
         RedisCommandProcessor redis = new RedisCommandProcessorImpl();
         invoker.init(redis);
-        redis.initStore(busHelper, delegate,invoker);
+        redis.initStore(busHelper, delegate, invoker);
         ServerBootstrap serverBootstrap = new ServerBootstrap();
         serverBootstrap.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)

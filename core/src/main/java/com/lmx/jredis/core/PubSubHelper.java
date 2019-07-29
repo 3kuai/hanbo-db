@@ -1,19 +1,21 @@
 package com.lmx.jredis.core;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import redis.SerializationUtil;
 import redis.netty4.BulkReply;
+import redis.netty4.Command;
 import redis.util.BytesKey;
 
 import javax.annotation.PostConstruct;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 
@@ -26,6 +28,8 @@ import java.util.concurrent.*;
 public class PubSubHelper {
     Map<BytesKey, ConcurrentHashMap<ChannelHandlerContext, BytesKey>> subscribers = new ConcurrentHashMap<>();
     BlockingQueue<Message> messages = new LinkedBlockingQueue<>();
+    @Autowired
+    RedisCommandInvoker redisCommandInvoker;
 
     @Data
     @Builder
@@ -44,8 +48,12 @@ public class PubSubHelper {
             if (!subscribers.containsKey(new BytesKey(t))) {
                 subscribers.put(new BytesKey(t), new ConcurrentHashMap<ChannelHandlerContext, BytesKey>());
             }
-            subscribers.get(new BytesKey(t)).put(channel, new BytesKey("".getBytes()));
-            log.info("register subscriber {}", channel.channel().toString());
+            if (channel != null) {
+                if (!subscribers.get(new BytesKey(t)).contains(channel)) {
+                    subscribers.get(new BytesKey(t)).put(channel, new BytesKey("".getBytes()));
+                    log.info("register subscriber {}", channel.channel().toString());
+                }
+            }
         }
     }
 
@@ -63,7 +71,7 @@ public class PubSubHelper {
         messages.add(m);
     }
 
-    ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 2);
+    ExecutorService executorService = Executors.newSingleThreadExecutor();
 
     Thread t = new Thread(new Runnable() {
         @Override
@@ -72,18 +80,29 @@ public class PubSubHelper {
                 try {
                     final Message me = messages.take();
                     byte[] topic = me.getTopic();
+
                     ConcurrentHashMap<ChannelHandlerContext, BytesKey> chanList = subscribers.get(new BytesKey(topic));
                     if (chanList == null)
                         continue;
                     for (final ChannelHandlerContext chc : chanList.keySet()) {
                         if (chc.channel().isOpen()) {
-                            log.info("notify channel: {} ,msg: {}", chc.toString(), me.getMsg());
-                            executorService.execute(new Runnable() {
-                                @Override
-                                public void run() {
-                                    chc.channel().writeAndFlush(new BulkReply(me.getMsg()));
-                                }
-                            });
+                            if (new String(topic).equals("replication")) {
+                                byte[] cmd = me.getMsg();
+                                ByteBuf wrap = Unpooled.wrappedBuffer(cmd);
+                                int dataLength = wrap.readInt();
+                                byte[] data = new byte[dataLength];
+                                wrap.readBytes(data);
+                                Command obj = SerializationUtil.deserialize(data, Command.class);
+                                redisCommandInvoker.handlerEvent(chc, obj);
+                            } else {
+                                log.info("notify channel: {} ,msg: {}", chc.toString(), me.getMsg());
+                                executorService.execute(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        chc.channel().writeAndFlush(new BulkReply(me.getMsg()));
+                                    }
+                                });
+                            }
                         } else {
                             chanList.remove(chc);
                         }

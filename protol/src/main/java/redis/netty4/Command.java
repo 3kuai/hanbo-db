@@ -4,6 +4,7 @@ import com.google.common.base.Charsets;
 import io.netty.buffer.ByteBuf;
 
 import java.io.IOException;
+import java.io.Serializable;
 
 import static redis.util.Encoding.numToBytes;
 
@@ -12,7 +13,7 @@ import static redis.util.Encoding.numToBytes;
  * since most commands fall into that category. Passing bytes, channelbuffers and
  * strings / objects are all allowed. All strings are assumed to be UTF-8.
  */
-public class Command {
+public class Command implements Serializable {
     public static final byte[] ARGS_PREFIX = "*".getBytes();
     public static final byte[] CRLF = "\r\n".getBytes();
     public static final byte[] BYTES_PREFIX = "$".getBytes();
