@@ -11,8 +11,11 @@ java写的redis服务端程序
     5.select keys scan expire del
     6.multi exec discard
     7.incr incrby
+    8.slaveof
     ....
     
+支持数据动态扩容，磁盘写不下自动扩大一倍  
+
 ## 客户端
     兼容jedis，spring-redis
     redis桌面版0.9+
@@ -20,12 +23,12 @@ java写的redis服务端程序
 ## 架构
 仅key占用JVM堆内存空间，value使用堆外内存（内存文件映射）
 
-![storage design](https://github.com/lmx1989219/jredis/blob/master/storage-design.png)
+![存储设计](https://github.com/lmx1989219/jredis/blob/master/storage-design.png)
 
-![buffer-structure](https://github.com/lmx1989219/jredis/blob/master/buffer-structure.png)
+![buffer结构](https://github.com/lmx1989219/jredis/blob/master/buffer-structure.png)
 
-### 淘汰策略
-    LRU 算法
+![主从复制](https://github.com/lmx1989219/jredis/blob/master/replication.png)
+
 ### 线性存储
     1.基于 jdk MappedByteBuffer
     2.kv基于TLV编解码.
@@ -37,3 +40,13 @@ java写的redis服务端程序
  
     java -jar jredis-{version}.jar
     
+    
+### 主节点配置
+自动发现从节点
+    
+    replication.mode=master
+    
+### 从节点配置
+主动注册从节点
+    
+    slaver.of=127.0.0.1:16379

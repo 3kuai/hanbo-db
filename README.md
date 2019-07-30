@@ -4,7 +4,7 @@
 redis of java implemented, as same as a redis server.
 
 ## features
-supported command list
+support a part of redis proto,e.g:
 
     1.set get
     2.lpush rpush lrange blpop brpop llen
@@ -13,8 +13,10 @@ supported command list
     5.select keys scan expire del
     6.multi exec discard
     7.incr incrby
+    8.slaveof
     ....
-    
+support dynamic resize disk space    
+
 ## client side
     compat jedis,spring-data-redis,spring-boot-starter-redis
     compat redisDesktop management tool with v0.9+
@@ -26,8 +28,8 @@ only keys be used in JVM
 
 ![buffer-structure](https://github.com/lmx1989219/jredis/blob/master/buffer-structure.png)
 
-### evict policy
-    LRU algorithm
+![replication](https://github.com/lmx1989219/jredis/blob/master/replication.png)
+
 ### linear storage
     1.based on jdk's MappedByteBuffer
     2.fixed unit size ,head 4 byte write in last item position,
@@ -40,3 +42,12 @@ only keys be used in JVM
  
     java -jar jredis-{version}.jar
     
+### master conf
+auto discovery slave node
+
+    replication.mode=master
+    
+### slave conf
+auto register slave node
+
+    slaver.of=127.0.0.1:16379

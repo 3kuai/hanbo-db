@@ -1,12 +1,11 @@
 package com.lmx.jredis.core;
 
 import com.google.common.base.Charsets;
+import com.google.common.collect.Lists;
 import com.google.common.net.HostAndPort;
-import com.lmx.jredis.core.dtype.DatabaseRouter;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.util.AttributeKey;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,6 +20,7 @@ import redis.util.BytesKey;
 import javax.annotation.PostConstruct;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -39,17 +39,12 @@ public class RedisCommandInvoker {
     private LinkedBlockingQueue<Command> repQueue = new LinkedBlockingQueue<>(2 << 16);
     @Value("${replication.mode:master}")
     private String replicationMode;
-    @Value("${slaver.host:127.0.0.1:16380}")
-    private String slaverHost;
+    private List<Jedis> slaverHostList = Lists.newArrayList();
     @Value("${slaver.of:127.0.0.1:16379}")
     private String slaverOf;
     @Autowired
     private PubSubHelper pubSubHelper;
     final static byte[] repKey = "replication".getBytes();
-    private Jedis jedis;
-    private AttributeKey session = AttributeKey.valueOf("sessionIdentify");
-    @Autowired
-    private DatabaseRouter delegate;
     private Thread asyncTask = new Thread(new Runnable() {
         @Override
         public void run() {
@@ -60,13 +55,9 @@ public class RedisCommandInvoker {
                     ByteBuf byteBuf = Unpooled.buffer(4 + data.length);
                     byteBuf.writeInt(data.length);
                     byteBuf.writeBytes(data);
-                    if (jedis == null || !jedis.isConnected())
-                        initRedisConn();
-                    jedis.publish(repKey, byteBuf.array());
+                    publish(byteBuf);
                 } catch (Exception e) {
                     log.error("", e);
-                    jedis.close();
-                    initRedisConn();
                 }
             }
         }
@@ -80,7 +71,7 @@ public class RedisCommandInvoker {
                 System.err.println(String.format("sync data start"));
                 //connect to master
                 HostAndPort master = HostAndPort.fromString(slaverOf);
-                jedis = new Jedis(master.getHostText(), master.getPort(), 60 * 1000, 60 * 1000);
+                Jedis jedis = new Jedis(master.getHostText(), master.getPort(), 60 * 1000, 60 * 1000);
                 //send slaveof cmd
                 String resp = jedis.slaveof(System.getProperty("server.host"), Integer.parseInt(System.getProperty("server.port")));
                 System.err.println(String.format("sync data end,state=%s", resp));
@@ -90,11 +81,6 @@ public class RedisCommandInvoker {
             }
         }
     });
-
-    void initRedisConn() {
-        HostAndPort hostAndPort = HostAndPort.fromString(slaverHost);
-        jedis = new Jedis(hostAndPort.getHostText(), hostAndPort.getPort(), 60 * 1000, 60 * 1000);
-    }
 
     @PostConstruct
     public void initThread() {
@@ -187,6 +173,22 @@ public class RedisCommandInvoker {
             if (mName.equals("publish")) {
                 pubSubHelper.regSubscriber(ch, repKey);
             }
+        }
+    }
+
+    public void setSlaverHost(String slaverHost) {
+        HostAndPort hostAndPort = HostAndPort.fromString(slaverHost);
+        Jedis jedis = new Jedis(hostAndPort.getHostText(), hostAndPort.getPort(), 60 * 1000, 60 * 1000);
+        slaverHostList.add(jedis);
+    }
+
+    public void publish(ByteBuf byteBuf) {
+        for (int i = 0; i < slaverHostList.size(); i++) {
+            Jedis jedis = slaverHostList.get(i);
+            if (!jedis.isConnected()) {
+                slaverHostList.remove(jedis);
+            }
+            jedis.publish(repKey, byteBuf.array());
         }
     }
 }

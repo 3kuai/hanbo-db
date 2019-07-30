@@ -17,11 +17,10 @@ import java.util.Map;
 @Slf4j
 @EqualsAndHashCode(callSuper = false)
 public abstract class IndexHelper extends BaseMedia {
-    private static final int maxCacheLimit = 1 << 19;
     @Getter
-    protected Map<String, Object> keyMap = new LRUCache<>(maxCacheLimit);
+    protected Map<String, Object> keyMap = new HashMap<>();
     @Getter
-    protected Map<String, Long> expireMap = new LRUCache<>(maxCacheLimit);
+    protected Map<String, Long> expireMap = new HashMap<>();
 
     public IndexHelper(int db, String fileName, int size) throws Exception {
         super(db, fileName, size);

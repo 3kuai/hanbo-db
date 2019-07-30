@@ -31,7 +31,7 @@ public abstract class AbstractTransactionHandler implements RedisCommandProcesso
     protected ChannelHandlerContext channelHandlerContext;
     private String transaction = "transactionIdentify";
     private String session = "sessionIdentify";
-    private RedisCommandInvoker invoker;
+    protected RedisCommandInvoker invoker;
     private AttributeKey txErrorAttr = AttributeKey.valueOf("txError");
 
     public boolean hasOpenTx() {
