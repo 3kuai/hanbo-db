@@ -40,6 +40,8 @@ public class RedisCommandInvoker {
     private String replicationMode;
     @Value("${slaver.host:127.0.0.1:16380}")
     private String slaverHost;
+    @Value("${slaver.of:127.0.0.1:16379}")
+    private String slaverOf;
     @Autowired
     private PubSubHelper pubSubHelper;
     final static byte[] repKey = "replication".getBytes();
@@ -62,7 +64,6 @@ public class RedisCommandInvoker {
                     log.error("", e);
                     jedis.close();
                     initRedisConn();
-
                 }
             }
         }
@@ -78,6 +79,23 @@ public class RedisCommandInvoker {
         if (replicationMode.equals("master")) {
             replication.setName("replicationTask");
             replication.start();
+        } else {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        Thread.sleep(5000L);
+                        //connect to master
+                        HostAndPort master = HostAndPort.fromString(slaverOf);
+                        HostAndPort slave = HostAndPort.fromString(slaverHost);
+                        jedis = new Jedis(master.getHostText(), master.getPort());
+                        //send slaveof cmd
+                        String resp = jedis.slaveof(slave.getHostText(), slave.getPort());
+                        log.info("sync data end,state={}", resp);
+                    } catch (Exception e) {
+                    }
+                }
+            }).start();
         }
     }
 
@@ -107,7 +125,8 @@ public class RedisCommandInvoker {
                             return rs.handlerTxOp(command);
                         } else {
                             if (replicationMode.equals("master")) {
-                                repQueue.offer(command);
+                                if (!mName.equals("slaveof"))
+                                    repQueue.offer(command);
                             } else {
                                 pubSubHelper.regSubscriber(ch, repKey);
                             }

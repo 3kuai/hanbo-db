@@ -1,5 +1,6 @@
 package com.lmx.jredis.core;
 
+import com.google.common.base.Charsets;
 import com.google.common.collect.Lists;
 import com.lmx.jredis.core.dtype.DatabaseRouter;
 import com.lmx.jredis.core.dtype.HashStore;
@@ -12,6 +13,7 @@ import com.lmx.jredis.storage.DataTypeEnum;
 import com.lmx.jredis.storage.IndexHelper;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.AttributeKey;
+import redis.clients.jedis.Jedis;
 import redis.netty4.*;
 import redis.util.*;
 
@@ -1197,8 +1199,36 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
      */
     @Override
     public StatusReply slaveof(byte[] host0, byte[] port1) throws RedisException {
-        // TODO
-        return null;
+        // 注册从节点信息，建立主到从的连接
+        Jedis jedis = new Jedis(new String(host0), Integer.parseInt(new String(port1)));
+        // 写指令复制
+        Map<Integer, DatabaseRouter.RedisDB> allDB = delegate.getDbMap();
+        for (Map.Entry<Integer, DatabaseRouter.RedisDB> integerRedisDBEntry : allDB.entrySet()) {
+            DatabaseRouter.RedisDB db = integerRedisDBEntry.getValue();
+            IndexHelper idx = db.getIndexHelper();
+            Map<String, Object> keyMap = idx.getKeyMap();
+            for (Map.Entry<String, Object> stringObjectEntry : keyMap.entrySet()) {
+                String k = stringObjectEntry.getKey();
+                byte[] kByte = k.getBytes(Charsets.UTF_8);
+                Object kType = stringObjectEntry.getValue();
+                if (kType instanceof DataHelper) {
+                    byte[] vData = db.getSimpleKV().read(k);
+                    jedis.set(kByte, vData);
+                }
+                if (kType instanceof List) {
+                    List<byte[]> vData = db.getSimpleList().read(k, 0, -1);
+                    jedis.lpush(kByte, (byte[][]) vData.toArray());
+                }
+                if (kType instanceof Map) {
+                    byte[][] vData = db.getSimpleHash().read(k);
+                    for (int i = 0; i < vData.length; ) {
+                        jedis.hset(kByte, vData[i++], vData[i]);
+                    }
+                }
+            }
+        }
+        jedis.close();
+        return StatusReply.OK;
     }
 
     /**
@@ -1222,7 +1252,7 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
      */
     @Override
     public Reply sync() throws RedisException {
-        // TODO: Blocking
+        // TODO 把磁盘数据全量发送到从节点
         return null;
     }
 

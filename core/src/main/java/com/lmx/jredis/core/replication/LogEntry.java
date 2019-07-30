@@ -1,12 +1,13 @@
 package com.lmx.jredis.core.replication;
 
 /**
- * //TODO base on offset to replication
+ * base on offset to replication
  *
  * @author : lucas
  * @date 2019/07/29
  */
 public class LogEntry {
+    private String runId;
     private long startOffset;
     private int logDbIdx;
     private String logType;
