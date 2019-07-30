@@ -2,9 +2,11 @@ package com.lmx.jredis.core;
 
 import com.google.common.base.Charsets;
 import com.google.common.net.HostAndPort;
+import com.lmx.jredis.core.dtype.DatabaseRouter;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.util.AttributeKey;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,7 +36,6 @@ public class RedisCommandInvoker {
     private static final byte LOWER_DIFF = 'a' - 'A';
     private RedisCommandProcessor rs;
     public static final Map<BytesKey, Wrapper> methods = new ConcurrentHashMap<>();
-
     private LinkedBlockingQueue<Command> repQueue = new LinkedBlockingQueue<>(2 << 16);
     @Value("${replication.mode:master}")
     private String replicationMode;
@@ -46,8 +47,10 @@ public class RedisCommandInvoker {
     private PubSubHelper pubSubHelper;
     final static byte[] repKey = "replication".getBytes();
     private Jedis jedis;
-
-    private Thread replication = new Thread(new Runnable() {
+    private AttributeKey session = AttributeKey.valueOf("sessionIdentify");
+    @Autowired
+    private DatabaseRouter delegate;
+    private Thread asyncTask = new Thread(new Runnable() {
         @Override
         public void run() {
             while (true) {
@@ -57,7 +60,7 @@ public class RedisCommandInvoker {
                     ByteBuf byteBuf = Unpooled.buffer(4 + data.length);
                     byteBuf.writeInt(data.length);
                     byteBuf.writeBytes(data);
-                    if (jedis == null || jedis.isConnected())
+                    if (jedis == null || !jedis.isConnected())
                         initRedisConn();
                     jedis.publish(repKey, byteBuf.array());
                 } catch (Exception e) {
@@ -69,33 +72,38 @@ public class RedisCommandInvoker {
         }
     });
 
+    private Thread syncTask = new Thread(new Runnable() {
+        @Override
+        public void run() {
+            try {
+                Thread.sleep(5000L);
+                System.err.println(String.format("sync data start"));
+                //connect to master
+                HostAndPort master = HostAndPort.fromString(slaverOf);
+                jedis = new Jedis(master.getHostText(), master.getPort(), 60 * 1000, 60 * 1000);
+                //send slaveof cmd
+                String resp = jedis.slaveof(System.getProperty("server.host"), Integer.parseInt(System.getProperty("server.port")));
+                System.err.println(String.format("sync data end,state=%s", resp));
+                jedis.close();
+            } catch (Exception e) {
+                log.error("", e);
+            }
+        }
+    });
+
     void initRedisConn() {
         HostAndPort hostAndPort = HostAndPort.fromString(slaverHost);
-        jedis = new Jedis(hostAndPort.getHostText(), hostAndPort.getPort());
+        jedis = new Jedis(hostAndPort.getHostText(), hostAndPort.getPort(), 60 * 1000, 60 * 1000);
     }
 
     @PostConstruct
     public void initThread() {
         if (replicationMode.equals("master")) {
-            replication.setName("replicationTask");
-            replication.start();
+            asyncTask.setName("asyncReplicationTask");
+            asyncTask.start();
         } else {
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        Thread.sleep(5000L);
-                        //connect to master
-                        HostAndPort master = HostAndPort.fromString(slaverOf);
-                        HostAndPort slave = HostAndPort.fromString(slaverHost);
-                        jedis = new Jedis(master.getHostText(), master.getPort());
-                        //send slaveof cmd
-                        String resp = jedis.slaveof(slave.getHostText(), slave.getPort());
-                        log.info("sync data end,state={}", resp);
-                    } catch (Exception e) {
-                    }
-                }
-            }).start();
+            syncTask.setName("syncReplicationTask");
+            syncTask.start();
         }
     }
 
@@ -116,7 +124,7 @@ public class RedisCommandInvoker {
                     long start = System.currentTimeMillis();
                     try {
                         command.toArguments(objects, parameterTypes);
-                        //check param
+                        //check param length
                         if (command.getObjects().length - 1 < parameterTypes.length) {
                             throw new RedisException("wrong number of arguments for '" + mName + "' command");
                         }
@@ -124,12 +132,7 @@ public class RedisCommandInvoker {
                         if (ch != null && rs.hasOpenTx() && command.isInternal()) {
                             return rs.handlerTxOp(command);
                         } else {
-                            if (replicationMode.equals("master")) {
-                                if (!mName.equals("slaveof"))
-                                    repQueue.offer(command);
-                            } else {
-                                pubSubHelper.regSubscriber(ch, repKey);
-                            }
+                            replication(mName, ch, command);
                             return (Reply) method.invoke(rs, objects);
                         }
                     } catch (Exception e) {
@@ -171,4 +174,19 @@ public class RedisCommandInvoker {
         return reply;
     }
 
+    boolean isWriteCMD(String cmd) {
+        return cmd.matches("set|lpush|rpush|expire|hset");
+    }
+
+    void replication(String mName, ChannelHandlerContext ch, Command command) {
+        if (replicationMode.equals("master")) {
+            if (isWriteCMD(mName)) {
+                repQueue.offer(command);
+            }
+        } else {
+            if (mName.equals("publish")) {
+                pubSubHelper.regSubscriber(ch, repKey);
+            }
+        }
+    }
 }

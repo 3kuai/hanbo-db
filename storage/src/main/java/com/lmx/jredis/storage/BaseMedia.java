@@ -20,7 +20,7 @@ public class BaseMedia {
     static File file;
     static File defaultFile;
     File f;
-    final static String BASE_DIR = "data";
+    final static String BASE_DIR = System.getProperty("data.path") == null ? "data" : System.getProperty("data.path") + File.separator + "data";
     final public static String CHARSET = "UTF-8";
     final char NORMAL = '1';
     final char DELETE = '0';

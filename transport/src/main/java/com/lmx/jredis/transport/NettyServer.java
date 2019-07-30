@@ -6,10 +6,7 @@ import com.lmx.jredis.core.RedisCommandProcessor;
 import com.lmx.jredis.core.RedisCommandProcessorImpl;
 import com.lmx.jredis.core.dtype.DatabaseRouter;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.ChannelPipeline;
-import io.netty.channel.EventLoopGroup;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -59,6 +56,7 @@ public class NettyServer {
                 .option(ChannelOption.SO_BACKLOG, 100)
                 .localAddress(port)
                 .childOption(ChannelOption.TCP_NODELAY, true)
+                .childOption(ChannelOption.WRITE_BUFFER_WATER_MARK, new WriteBufferWaterMark(128 * 1024, 512 * 1024))
                 .childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     public void initChannel(SocketChannel ch) throws Exception {

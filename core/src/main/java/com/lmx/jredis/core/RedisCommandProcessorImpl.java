@@ -2,6 +2,7 @@ package com.lmx.jredis.core;
 
 import com.google.common.base.Charsets;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.lmx.jredis.core.dtype.DatabaseRouter;
 import com.lmx.jredis.core.dtype.HashStore;
 import com.lmx.jredis.core.dtype.ListStore;
@@ -1200,14 +1201,17 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
     @Override
     public StatusReply slaveof(byte[] host0, byte[] port1) throws RedisException {
         // 注册从节点信息，建立主到从的连接
-        Jedis jedis = new Jedis(new String(host0), Integer.parseInt(new String(port1)));
+        Jedis jedis = new Jedis(new String(host0), Integer.parseInt(new String(port1)), 60 * 1000, 60 * 1000);
         // 写指令复制
         Map<Integer, DatabaseRouter.RedisDB> allDB = delegate.getDbMap();
+        int dbIdx = 0;
         for (Map.Entry<Integer, DatabaseRouter.RedisDB> integerRedisDBEntry : allDB.entrySet()) {
+            jedis.select(dbIdx++);
             DatabaseRouter.RedisDB db = integerRedisDBEntry.getValue();
             IndexHelper idx = db.getIndexHelper();
             Map<String, Object> keyMap = idx.getKeyMap();
-            for (Map.Entry<String, Object> stringObjectEntry : keyMap.entrySet()) {
+            Map<String, Object> keyMapTmp = Maps.newHashMap(keyMap);
+            for (Map.Entry<String, Object> stringObjectEntry : keyMapTmp.entrySet()) {
                 String k = stringObjectEntry.getKey();
                 byte[] kByte = k.getBytes(Charsets.UTF_8);
                 Object kType = stringObjectEntry.getValue();
@@ -1217,12 +1221,17 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
                 }
                 if (kType instanceof List) {
                     List<byte[]> vData = db.getSimpleList().read(k, 0, -1);
-                    jedis.lpush(kByte, (byte[][]) vData.toArray());
+//                    byte[][] list = new byte[vData.size()][];
+//                    int start = 0;
+                    for (byte[] vDatum : vData) {
+//                        list[start++] = vDatum;
+                        jedis.lpush(kByte, vDatum);
+                    }
                 }
                 if (kType instanceof Map) {
                     byte[][] vData = db.getSimpleHash().read(k);
                     for (int i = 0; i < vData.length; ) {
-                        jedis.hset(kByte, vData[i++], vData[i]);
+                        jedis.hset(kByte, vData[i++], vData[i++]);
                     }
                 }
             }

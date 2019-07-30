@@ -26,6 +26,15 @@ public class Command implements Serializable {
     private final Object object3;
     private final boolean inline;
     private int eventType;//1=internal,0=external
+    private int dbIdx;
+
+    public int getDbIdx() {
+        return dbIdx;
+    }
+
+    public void setDbIdx(int dbIdx) {
+        this.dbIdx = dbIdx;
+    }
 
     public boolean isInternal() {
         return this.eventType == 0;
