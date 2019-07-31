@@ -86,7 +86,7 @@ public class PubSubHelper {
                         continue;
                     for (final ChannelHandlerContext chc : chanList.keySet()) {
                         if (chc.channel().isOpen()) {
-                            if (new String(topic).equals("replication")) {
+                            if (new String(topic).equals(RedisCommandInvoker.repKey)) {
                                 byte[] cmd = me.getMsg();
                                 ByteBuf wrap = Unpooled.wrappedBuffer(cmd);
                                 int dataLength = wrap.readInt();
@@ -116,6 +116,7 @@ public class PubSubHelper {
 
     @PostConstruct
     public void init() {
+        t.setName("PubSubTask");
         t.start();
     }
 }

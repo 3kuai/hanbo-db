@@ -35,7 +35,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class RedisCommandInvoker {
     private static final byte LOWER_DIFF = 'a' - 'A';
     private RedisCommandProcessor rs;
-    public static final Map<BytesKey, Wrapper> methods = new ConcurrentHashMap<>();
+    private static final Map<BytesKey, Wrapper> methods = new ConcurrentHashMap<>();
     private LinkedBlockingQueue<Command> repQueue = new LinkedBlockingQueue<>(2 << 16);
     @Value("${replication.mode:master}")
     private String replicationMode;
@@ -44,13 +44,15 @@ public class RedisCommandInvoker {
     private String slaverOf;
     @Autowired
     private PubSubHelper pubSubHelper;
-    final static byte[] repKey = "replication".getBytes();
+    public static final String repKey = "replication";
+    private boolean isInitSubscriber;
     private Thread asyncTask = new Thread(new Runnable() {
         @Override
         public void run() {
             while (true) {
+                Command command = null;
                 try {
-                    Command command = repQueue.take();
+                    command = repQueue.take();
                     byte[] data = SerializationUtil.serialize(command);
                     ByteBuf byteBuf = Unpooled.buffer(4 + data.length);
                     byteBuf.writeInt(data.length);
@@ -58,6 +60,14 @@ public class RedisCommandInvoker {
                     publish(byteBuf);
                 } catch (Exception e) {
                     log.error("", e);
+                    try {
+                        Thread.sleep(5000L);
+                    } catch (InterruptedException e1) {
+                        e1.printStackTrace();
+                    }
+                    if (command != null) {
+                        repQueue.offer(command);
+                    }
                 }
             }
         }
@@ -161,7 +171,7 @@ public class RedisCommandInvoker {
     }
 
     boolean isWriteCMD(String cmd) {
-        return cmd.matches("set|lpush|rpush|expire|hset");
+        return cmd.matches("set|lpush|rpush|expire|hset|select");
     }
 
     void replication(String mName, ChannelHandlerContext ch, Command command) {
@@ -170,25 +180,30 @@ public class RedisCommandInvoker {
                 repQueue.offer(command);
             }
         } else {
-            if (mName.equals("publish")) {
-                pubSubHelper.regSubscriber(ch, repKey);
+            if (mName.equals("publish") && !isInitSubscriber) {
+                System.err.println("register subscriber ok");
+                pubSubHelper.regSubscriber(ch, repKey.getBytes());
+                isInitSubscriber = true;
             }
         }
     }
 
-    public void setSlaverHost(String slaverHost) {
+    public void startAsyncReplication(String slaverHost) {
         HostAndPort hostAndPort = HostAndPort.fromString(slaverHost);
         Jedis jedis = new Jedis(hostAndPort.getHostText(), hostAndPort.getPort(), 60 * 1000, 60 * 1000);
+        jedis.ping();
         slaverHostList.add(jedis);
     }
 
     public void publish(ByteBuf byteBuf) {
         for (int i = 0; i < slaverHostList.size(); i++) {
             Jedis jedis = slaverHostList.get(i);
-            if (!jedis.isConnected()) {
+            try {
+                jedis.publish(repKey.getBytes(), byteBuf.array());
+            } catch (Exception e) {
+                log.error("", e);
                 slaverHostList.remove(jedis);
             }
-            jedis.publish(repKey, byteBuf.array());
         }
     }
 }

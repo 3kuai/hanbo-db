@@ -5,7 +5,6 @@ import java.io.RandomAccessFile;
 import java.lang.reflect.Method;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.Files;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 
@@ -49,6 +48,20 @@ public class BaseMedia {
                 file.mkdir();
             if (i == 0) {
                 defaultFile = file;
+            }
+        }
+    }
+
+    public static void delFileSys() {
+        file = new File(BASE_DIR);
+        if (file.exists()) {
+            for (int i = 0; i < dbLength; i++) {
+                file = new File(BASE_DIR + File.separator + i);
+                if (file.exists()) {
+                    for (File file1 : file.listFiles()) {
+                        file1.delete();
+                    }
+                }
             }
         }
     }

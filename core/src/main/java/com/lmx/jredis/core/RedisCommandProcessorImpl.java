@@ -1200,9 +1200,9 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
      */
     @Override
     public StatusReply slaveof(byte[] host0, byte[] port1) throws RedisException {
-        invoker.setSlaverHost(new String(host0) + ":" + new String(port1));
         // 注册从节点信息，建立主到从的连接
         Jedis jedis = new Jedis(new String(host0), Integer.parseInt(new String(port1)), 60 * 1000, 60 * 1000);
+        jedis.ping();
         // 写指令复制
         Map<Integer, DatabaseRouter.RedisDB> allDB = delegate.getDbMap();
         int dbIdx = 0;
@@ -1222,10 +1222,7 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
                 }
                 if (kType instanceof List) {
                     List<byte[]> vData = db.getSimpleList().read(k, 0, -1);
-//                    byte[][] list = new byte[vData.size()][];
-//                    int start = 0;
                     for (byte[] vDatum : vData) {
-//                        list[start++] = vDatum;
                         jedis.lpush(kByte, vDatum);
                     }
                 }
@@ -1238,6 +1235,7 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
             }
         }
         jedis.close();
+        invoker.startAsyncReplication(new String(host0) + ":" + new String(port1));
         return StatusReply.OK;
     }
 

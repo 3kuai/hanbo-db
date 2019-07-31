@@ -1,5 +1,6 @@
 package com.lmx.jredis.core.dtype;
 
+import com.lmx.jredis.storage.BaseMedia;
 import com.lmx.jredis.storage.DataHelper;
 import com.lmx.jredis.storage.DataTypeEnum;
 import com.lmx.jredis.storage.IndexHelper;
@@ -29,6 +30,8 @@ public class DatabaseRouter {
     //dbMap size
     @Value("${dbMapSize:2}")
     private int shardSize;
+    @Value("${replication.mode:master}")
+    private String replicationMode;
 
     @Getter
     private Map<Integer, RedisDB> dbMap = new ConcurrentHashMap<>();
@@ -41,6 +44,8 @@ public class DatabaseRouter {
 
     @PostConstruct
     public void init() {
+        if (!replicationMode.equals("master"))
+            BaseMedia.delFileSys();
         for (int i = 0; i < shardSize; i++) {
             RedisDB redisDB = new RedisDB();
             redisDB.init(i, storeSize);
