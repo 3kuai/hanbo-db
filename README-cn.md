@@ -40,13 +40,14 @@ java写的redis服务端程序
  
     java -jar jredis-{version}.jar
     
-    
-### 主节点配置
+### 高可用配置
+支持一主多从，不过仅支持手动切换主从关系，计划未来实现哨兵机制    
+#### 主节点
 自动发现从节点
     
     replication.mode=master
     
-### 从节点配置
+#### 从节点
 主动注册从节点
     
     slaver.of=127.0.0.1:16379

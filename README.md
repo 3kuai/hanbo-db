@@ -42,12 +42,15 @@ only keys be used in JVM
  
     java -jar jredis-{version}.jar
     
-### master conf
+### ha conf 
+support one master multi slave,but not support auto selective master,now need to manual promotion.
+i will plan to implement sentinel mechanism 
+#### master
 auto discovery slave node
 
     replication.mode=master
     
-### slave conf
+#### slave
 auto register slave node
 
     slaver.of=127.0.0.1:16379
