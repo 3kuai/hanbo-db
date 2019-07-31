@@ -2,7 +2,8 @@
 java写的redis服务端程序
 
 ## 特征
-支持以下原生redis协议
+支持数据动态扩容  
+支持所有redis原生协议
 
     1.set get
     2.lpush rpush lrange blpop brpop llen
@@ -14,10 +15,8 @@ java写的redis服务端程序
     8.slaveof
     ....
     
-支持数据动态扩容，磁盘写不下自动扩大一倍  
-
 ## 客户端
-    兼容jedis，spring-redis
+    兼容jedis，spring-data-redis
     redis桌面版0.9+
     
 ## 架构
@@ -30,14 +29,12 @@ java写的redis服务端程序
 ![主从复制](https://github.com/lmx1989219/jredis/blob/master/replication.png)
 
 ### 线性存储
-    1.基于 jdk MappedByteBuffer
-    2.kv基于TLV编解码.
-    3.kv独立存储
+    1.头四个字节（存储offset）存放buffer最后的写入位置，后续的单元（数据内容）格式为TLV格式（flag+length+valueBytes）
+    2.k/v数据独立存储
+    3.超过阀值会自动扩容为原始空间的2倍大小
 ### 构建
-    cd jredis && mvn clean install
+    cd jredis && mvn clean install -Dmaven.test.skip=true
 ### 运行
- springboot启动
- 
     java -jar jredis-{version}.jar
     
 ### 高可用配置
@@ -50,4 +47,5 @@ java写的redis服务端程序
 #### 从节点
 主动注册从节点
     
+    replication.mode=slave
     slaver.of=127.0.0.1:16379
