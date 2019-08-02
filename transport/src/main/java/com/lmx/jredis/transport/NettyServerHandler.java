@@ -77,8 +77,8 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<Command> {
     @Override
     public void channelWritabilityChanged(ChannelHandlerContext ctx) throws Exception {
         boolean isWrite = ctx.channel().isWritable();
-        //if the out buffer size > higherMarker,then false
+        //false if the out buffer size > higherWaterMarker
         if (!isWrite)
-            System.err.println("warning!out bound buffer not be send...");
+            System.err.println("warning! send buffer is full, wait to free...");
     }
 }

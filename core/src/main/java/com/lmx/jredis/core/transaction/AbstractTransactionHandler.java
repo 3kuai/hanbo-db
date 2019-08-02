@@ -27,10 +27,10 @@ import static redis.netty4.IntegerReply.integer;
 @Slf4j
 public abstract class AbstractTransactionHandler implements RedisCommandProcessor {
     protected PubSubHelper bus;
-    protected DatabaseRouter delegate;
+    protected DatabaseRouter databaseRouter;
     protected ChannelHandlerContext channelHandlerContext;
-    private String transaction = "transactionIdentify";
-    private String session = "sessionIdentify";
+    protected AttributeKey session = AttributeKey.valueOf("sessionIdentify");
+    protected AttributeKey transaction = AttributeKey.valueOf("transactionIdentify");
     protected RedisCommandInvoker invoker;
     private AttributeKey txErrorAttr = AttributeKey.valueOf("txError");
 
@@ -39,7 +39,7 @@ public abstract class AbstractTransactionHandler implements RedisCommandProcesso
     }
 
     public Attribute getTxAttribute() {
-        return channelHandlerContext.channel().attr(AttributeKey.valueOf(transaction));
+        return channelHandlerContext.channel().attr(transaction);
     }
 
 
@@ -112,8 +112,8 @@ public abstract class AbstractTransactionHandler implements RedisCommandProcesso
     }
 
     public DatabaseRouter.RedisDB getRedisDB() {
-        DatabaseRouter.RedisDB redisDB = (DatabaseRouter.RedisDB) channelHandlerContext.channel().attr(AttributeKey.valueOf(session)).get();
-        return (redisDB == null ? delegate.select(0) : redisDB);
+        DatabaseRouter.RedisDB redisDB = (DatabaseRouter.RedisDB) channelHandlerContext.channel().attr(session).get();
+        return (redisDB == null ? databaseRouter.select(0) : redisDB);
     }
 
     /**
@@ -125,8 +125,8 @@ public abstract class AbstractTransactionHandler implements RedisCommandProcesso
      */
     @Override
     public StatusReply select(byte[] index0) throws RedisException {
-        DatabaseRouter.RedisDB store = delegate.select(Integer.parseInt(new String(index0)));
-        Attribute attribute = channelHandlerContext.channel().attr(AttributeKey.valueOf(session));
+        DatabaseRouter.RedisDB store = databaseRouter.select(Integer.parseInt(new String(index0)));
+        Attribute attribute = channelHandlerContext.channel().attr(session);
         if (null == store) {
             attribute.set(null);
             throw new RedisException();
@@ -142,7 +142,7 @@ public abstract class AbstractTransactionHandler implements RedisCommandProcesso
 
     public void initStore(PubSubHelper bus, DatabaseRouter delegate, RedisCommandInvoker invoker) {
         this.bus = bus;
-        this.delegate = delegate;
+        this.databaseRouter = delegate;
         this.invoker = invoker;
     }
 

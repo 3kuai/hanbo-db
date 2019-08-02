@@ -1136,7 +1136,7 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
                 "\n" +
                 "# Keyspace\n");
         int dbCount = 0;
-        for (DatabaseRouter.RedisDB db : delegate.getDbMap().values()) {
+        for (DatabaseRouter.RedisDB db : databaseRouter.getDbMap().values()) {
             int dbSize = db.getIndexHelper().getKeyMap().size();
             sb.append("db" + (dbCount++) + ":keys=" + dbSize + ",expires=81390,avg_ttl=47463342\n");
         }
@@ -1204,7 +1204,7 @@ public class RedisCommandProcessorImpl extends AbstractTransactionHandler {
         Jedis jedis = new Jedis(new String(host0), Integer.parseInt(new String(port1)), 60 * 1000, 60 * 1000);
         jedis.ping();
         // 写指令复制
-        Map<Integer, DatabaseRouter.RedisDB> allDB = delegate.getDbMap();
+        Map<Integer, DatabaseRouter.RedisDB> allDB = databaseRouter.getDbMap();
         int dbIdx = 0;
         for (Map.Entry<Integer, DatabaseRouter.RedisDB> integerRedisDBEntry : allDB.entrySet()) {
             jedis.select(dbIdx++);
