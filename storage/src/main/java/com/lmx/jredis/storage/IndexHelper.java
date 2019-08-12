@@ -2,6 +2,7 @@ package com.lmx.jredis.storage;
 
 import it.unimi.dsi.fastutil.objects.Object2LongAVLTreeMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectAVLTreeMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectBigArrayBigList;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -100,7 +101,7 @@ public abstract class IndexHelper extends BaseMedia {
             keyMap.put(key, dh);
         } else if (dh.getType().equals(DataTypeEnum.LIST.getDesc())) {
             if (!keyMap.containsKey(key)) {
-                keyMap.put(key, new ObjectBigArrayBigList<DataHelper>());
+                keyMap.put(key, new ObjectArrayList<>());
             }
             ((List) keyMap.get(key)).add(dh);
         } else if (dh.getType().equals(DataTypeEnum.HASH.getDesc())) {
