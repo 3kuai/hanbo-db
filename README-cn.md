@@ -20,6 +20,8 @@ java写的redis服务端程序
     redis桌面版0.9+
     
 ## 架构
+使用fastUtil库(Object2List、Object2Map)，具有非常好的读/写能力
+
 仅key占用JVM堆内存空间，value使用堆外内存（内存文件映射）
 
 ![存储设计](https://github.com/lmx1989219/jredis/blob/master/storage-design.png)

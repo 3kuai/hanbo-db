@@ -22,6 +22,7 @@ support all of redis proto,e.g:
     compat redisDesktop management tool with v0.9+
     
 ## architecture
+used fastUtil library(Object2List,Object2Map) has a powerful read/write ability
 only keys be loaded in JVM heap
 
 ![storage design](https://github.com/lmx1989219/jredis/blob/master/storage-design.png)
