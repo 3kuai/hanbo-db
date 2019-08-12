@@ -1,5 +1,8 @@
 package com.lmx.jredis.storage;
 
+import it.unimi.dsi.fastutil.objects.Object2LongAVLTreeMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectAVLTreeMap;
+import it.unimi.dsi.fastutil.objects.ObjectBigArrayBigList;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -18,9 +21,9 @@ import java.util.Map;
 @EqualsAndHashCode(callSuper = false)
 public abstract class IndexHelper extends BaseMedia {
     @Getter
-    protected Map<String, Object> keyMap = new HashMap<>();
+    protected Map<String, Object> keyMap = new Object2ObjectAVLTreeMap<>();
     @Getter
-    protected Map<String, Long> expireMap = new HashMap<>();
+    protected Map<String, Long> expireMap = new Object2LongAVLTreeMap<>();
 
     public IndexHelper(int db, String fileName, int size) throws Exception {
         super(db, fileName, size);
@@ -97,12 +100,12 @@ public abstract class IndexHelper extends BaseMedia {
             keyMap.put(key, dh);
         } else if (dh.getType().equals(DataTypeEnum.LIST.getDesc())) {
             if (!keyMap.containsKey(key)) {
-                keyMap.put(key, new LinkedList<DataHelper>());
+                keyMap.put(key, new ObjectBigArrayBigList<DataHelper>());
             }
             ((List) keyMap.get(key)).add(dh);
         } else if (dh.getType().equals(DataTypeEnum.HASH.getDesc())) {
             if (!keyMap.containsKey(dh.getHash())) {
-                keyMap.put(dh.getHash(), new HashMap<>());
+                keyMap.put(dh.getHash(), new Object2ObjectAVLTreeMap<>());
             }
             ((Map) keyMap.get(dh.getHash())).put(key, dh);
         }
