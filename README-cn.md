@@ -1,5 +1,5 @@
 # HanboDB
-java写的redis服务端程序
+hanboDB是一个高性能低延迟的内存数据库，源码：https://github.com/3kuai/jredis
 
 ## 特征
 支持数据动态扩容  
