@@ -7,15 +7,15 @@ hanboDB is a high available,low latency memory database system.
 1. support dynamic resize 
 2. support all of redis proto,e.g:
 
-    1.set get
-    2.lpush rpush lrange blpop brpop llen
-    3.hset hget hgetall hscan
-    4.pub sub
-    5.select keys scan expire del
-    6.multi exec discard
-    7.incr incrby
-    8.slaveof
-    ....  
+        1.set get
+        2.lpush rpush lrange blpop brpop llen
+        3.hset hget hgetall hscan
+        4.pub sub
+        5.select keys scan expire del
+        6.multi exec discard
+        7.incr incrby
+        8.slaveof
+        ....  
     
 ## architecture
 use fastUtil library(Object2List,Object2Map) as keyMap in JVM,it has a powerful read/write ability.
