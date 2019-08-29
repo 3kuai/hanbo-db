@@ -1,29 +1,24 @@
 []()[中文](https://github.com/3kuai/jredis/edit/master/README-cn.md)
 []()[english](https://github.com/3kuai/jredis/edit/master/README.md)
 # HanboDB
-redis of java implemented, as same as a redis server.
+hanboDB is a high available,low latency memory database system.
 
 ## features
-support dynamic resize 
-support all of redis proto,e.g:
+1. support dynamic resize 
+2. support all of redis proto,e.g:
 
-    1.set get
-    2.lpush rpush lrange blpop brpop llen
-    3.hset hget hgetall hscan
-    4.pub sub
-    5.select keys scan expire del
-    6.multi exec discard
-    7.incr incrby
-    8.slaveof
-    ....  
-
-## client side
-    compat jedis,spring-data-redis
-    compat redisDesktop management tool with v0.9+
+        1.set get
+        2.lpush rpush lrange blpop brpop llen
+        3.hset hget hgetall hscan
+        4.pub sub
+        5.select keys scan expire del
+        6.multi exec discard
+        7.incr incrby
+        8.slaveof
+        ....  
     
 ## architecture
-used fastUtil library(Object2List,Object2Map) has a powerful read/write ability
-only keys be loaded in JVM heap
+use fastUtil library(Object2List,Object2Map) as keyMap in JVM,it has a powerful read/write ability.
 
 ![storage design](https://github.com/lmx1989219/jredis/blob/master/storage-design.png)
 
