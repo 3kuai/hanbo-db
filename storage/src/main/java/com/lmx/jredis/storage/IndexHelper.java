@@ -18,9 +18,9 @@ import java.util.Map;
 @EqualsAndHashCode(callSuper = false)
 public abstract class IndexHelper extends BaseMedia {
     @Getter
-    protected Map<String, Object> keyMap = new HashMap<>();
+    protected Map<String, Object> keyMap = new HashMap<>(2 << 16);
     @Getter
-    protected Map<String, Long> expireMap = new HashMap<>();
+    protected Map<String, Long> expireMap = new HashMap<>(2 << 8);
 
     public IndexHelper(int db, String fileName, int size) throws Exception {
         super(db, fileName, size);
