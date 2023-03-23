@@ -37,10 +37,15 @@ public class ValueStore extends AbstractStoreMedia {
                     indexHelper.updateIndex(dataHelper);
                     return true;
                 } else {
+                    //申请定长内存空间，用于更新时不需要重新申请空间，缺点是越界后导致后续数据value不准确（换句话说内容最多存储上限是124字节）
                     ByteBuffer b = ByteBuffer.allocateDirect(128);
-                    int length = value.getBytes().length;
+                    byte[] data = value.getBytes(Charsets.UTF_8);
+                    int length = data.length;
+                    if (length > 128 - 4) {
+                        throw new RuntimeException("value最大存储上限是124字节");
+                    }
                     b.putInt(length);
-                    b.put(value.getBytes(Charsets.UTF_8));
+                    b.put(data);
                     b.flip();
                     DataHelper dh = dataMedia.add(b);
                     dh.setKey(key);

@@ -1,5 +1,6 @@
 package com.lmx.jredis.core.dtype;
 
+import com.google.common.base.Charsets;
 import com.lmx.jredis.core.RedisException;
 import com.lmx.jredis.core.queue.BlockingQueueHelper;
 import com.lmx.jredis.storage.BaseMedia;
@@ -37,9 +38,13 @@ public class ListStore extends AbstractStoreMedia {
         try {
             if (super.write(key, value)) {
                 ByteBuffer b = ByteBuffer.allocateDirect(128);
-                int length = value.getBytes().length;
+                byte[] data = value.getBytes(Charsets.UTF_8);
+                int length = data.length;
+                if (length > 128 - 4) {
+                    throw new RuntimeException("value最大存储上限是124字节");
+                }
                 b.putInt(length);
-                b.put(value.getBytes(BaseMedia.CHARSET));
+                b.put(data);
                 b.flip();
                 DataHelper dh = dataMedia.add(b);
                 dh.setType(DataTypeEnum.LIST.getDesc());

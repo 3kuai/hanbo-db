@@ -1,0 +1,6 @@
+/core/target/classes/com/lmx/jredis/core/
+/data/
+/.idea/
+/protol/target/classes/redis/
+/storage/target/classes/com/lmx/jredis/storage/
+/transport/target/
