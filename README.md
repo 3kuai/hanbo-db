@@ -20,11 +20,11 @@ hanboDB is a high available,low latency memory database system.
 ## architecture
 use fastUtil library(Object2List,Object2Map) as keyMap in JVM,it has a powerful read/write ability.
 
-![storage design](https://github.com/lmx1989219/jredis/blob/master/storage-design.png)
+![storage design](https://github.com/3kuai/hanbo-db/blob/master/storage-design.png)
 
-![buffer-structure](https://github.com/lmx1989219/jredis/blob/master/buffer-structure.png)
+![buffer-structure](https://github.com/3kuai/hanbo-db/blob/master/buffer-structure.png)
 
-![replication](https://github.com/lmx1989219/jredis/blob/master/replication.png)
+![replication](https://github.com/3kuai/hanbo-db/blob/master/replication.png)
 
 ### linear storage
     1.fixed unit size ,head 4 byte write in last item position,
