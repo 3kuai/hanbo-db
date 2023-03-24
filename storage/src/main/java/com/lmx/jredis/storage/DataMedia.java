@@ -51,17 +51,27 @@ public class DataMedia extends BaseMedia {
         buffer.rewind();
     }
 
-    public DataHelper update(DataHelper dh, byte[] newBuf) {
-        buffer.position(dh.pos - 4);
-        int length = newBuf.length;
-        if (length > maxUnit)
-            throw new RuntimeException("exceed max storage limited exception");
-        else {
-            buffer.putInt(length);
-            buffer.put(newBuf);
-            dh.length = length;
-            buffer.rewind();
-            return dh;
-        }
+    public DataHelper update(DataHelper dh, byte[] newBuf) throws Exception {
+        //使用线性增量存储，节省预申请固定buf导致的存储空间浪费
+        this.remove(dh);
+        ByteBuffer buffer = ByteBuffer.allocate(4 + newBuf.length);
+        buffer.putInt(newBuf.length);
+        buffer.put(newBuf);
+        buffer.flip();
+        DataHelper d = this.add(buffer);
+        dh.length = newBuf.length;
+        dh.pos = d.pos;
+        return dh;
+        //        buffer.position(dh.pos - 4);
+//        int length = newBuf.length;
+//        if (length > maxUnit)
+//            throw new RuntimeException("exceed max storage limited exception");
+//        else {
+//            buffer.putInt(length);
+//            buffer.put(newBuf);
+//            dh.length = length;
+//            buffer.rewind();
+//            return dh;
+//        }
     }
 }

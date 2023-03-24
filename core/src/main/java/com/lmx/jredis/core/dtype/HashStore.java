@@ -36,12 +36,9 @@ public class HashStore extends AbstractStoreMedia {
     }
 
     void putVal(String hash, String field, String value) throws Exception {
-        ByteBuffer b = ByteBuffer.allocateDirect(128);
         byte[] data = value.getBytes(Charsets.UTF_8);
         int length = data.length;
-        if (length > 128 - 4) {
-            throw new RuntimeException("value最大存储上限是124字节");
-        }
+        ByteBuffer b = ByteBuffer.allocateDirect(4 + length);
         b.putInt(length);
         b.put(data);
         b.flip();

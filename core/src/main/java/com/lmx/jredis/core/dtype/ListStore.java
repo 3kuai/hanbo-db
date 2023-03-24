@@ -37,12 +37,9 @@ public class ListStore extends AbstractStoreMedia {
     public boolean write(String key, String value) {
         try {
             if (super.write(key, value)) {
-                ByteBuffer b = ByteBuffer.allocateDirect(128);
                 byte[] data = value.getBytes(Charsets.UTF_8);
                 int length = data.length;
-                if (length > 128 - 4) {
-                    throw new RuntimeException("value最大存储上限是124字节");
-                }
+                ByteBuffer b = ByteBuffer.allocateDirect(4 + length);
                 b.putInt(length);
                 b.put(data);
                 b.flip();
