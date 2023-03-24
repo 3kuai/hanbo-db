@@ -109,9 +109,15 @@ public abstract class IndexHelper extends BaseMedia {
     }
 
     public void updateIndex(DataHelper dh) {
-        buffer.position(dh.selfPos - 8 - 4);
-        buffer.putInt(dh.length);
-        buffer.rewind();
+//        buffer.position(dh.selfPos - 8 - 4);
+//        buffer.putInt(dh.length);
+//        buffer.rewind();
+        try {
+            remove(dh);
+            add(dh);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public void remove(DataHelper dh) {

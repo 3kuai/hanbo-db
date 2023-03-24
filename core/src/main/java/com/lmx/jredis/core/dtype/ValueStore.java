@@ -33,7 +33,7 @@ public class ValueStore extends AbstractStoreMedia {
             if (super.write(key, value)) {
                 DataHelper dataHelper = (DataHelper) indexHelper.type(key);
                 if (dataHelper != null) {
-                    dataHelper = dataMedia.update(dataHelper, value.getBytes(Charsets.UTF_8));
+                    dataMedia.update(dataHelper, value.getBytes(Charsets.UTF_8));
                     indexHelper.updateIndex(dataHelper);
                     return true;
                 } else {
