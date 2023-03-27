@@ -30,7 +30,7 @@ public class NettyServer {
     private String host;
     @Value("${server.backlog:1024}")
     private int backlog;
-    @Value("${server.port:16990}")
+    @Value("${server.port_:16990}")
     private int port;
     private EventLoopGroup bossGroup;
     private EventLoopGroup workerGroup;
@@ -56,7 +56,9 @@ public class NettyServer {
                 .option(ChannelOption.SO_BACKLOG, 100)
                 .localAddress(port)
                 .childOption(ChannelOption.TCP_NODELAY, true)
-                .childOption(ChannelOption.WRITE_BUFFER_WATER_MARK, new WriteBufferWaterMark(128 * 1024, 512 * 1024))
+                .childOption(ChannelOption.SO_SNDBUF,2 * 1024)
+                .childOption(ChannelOption.SO_RCVBUF,4 * 1024)
+                .childOption(ChannelOption.WRITE_BUFFER_WATER_MARK, new WriteBufferWaterMark(2 * 1024 * 1024, 4 * 1024 * 1024))
                 .childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     public void initChannel(SocketChannel ch) throws Exception {

@@ -35,30 +35,34 @@ public class RedisTests {
 
     @Autowired
     RedisTemplate<String, String> template;
-    ExecutorService es = Executors.newFixedThreadPool(8);
+    ExecutorService es = Executors.newFixedThreadPool(64);
     AtomicInteger count = new AtomicInteger(0);
 
     @Test
     public void test() throws Exception {
-        for (int i = 0; i < 1000 * 10; ++i) {
+        for (int i = 0; i < 100 * 1000; ++i) {
             es.execute(new Runnable() {
                 @Override
                 public void run() {
-                    int i = count.incrementAndGet();
-                    template.opsForValue().set("aa" + i, "b" + i);
-                    log.info("k=aa" + i + ",v=" + template.opsForValue().get("aa" + i));
-                    template.opsForList().leftPush(DataTypeEnum.LIST.getDesc() + i, "test");
-                    log.info("list=" + template.opsForList().range(DataTypeEnum.LIST.getDesc() + i, 0, -1));
-                    template.opsForHash().put("user200" + i, "age", "25");
-                    template.opsForHash().put("user200" + i, "sex", "男");
-                    log.info("hv=" + template.opsForHash().get("user200" + i, "age"));
+                    try {
+                        int i = count.incrementAndGet();
+                        template.opsForValue().set("aa" + i, "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb11123aaa" + i);
+                        template.opsForValue().get("aa" + i);
+//                        log.error("k=aa" + i + ",v=" + template.opsForValue().get("aa" + i));
+//                        template.opsForList().leftPush(DataTypeEnum.LIST.getDesc() + i, "test");
+//                        log.error("list=" + template.opsForList().range(DataTypeEnum.LIST.getDesc() + i, 0, -1));
+                        template.opsForHash().put("user200" + i, "age", "25");
+                        template.opsForHash().put("user200" + i, "sex", "男asdsadas123123fff");
+//                        log.error("hv=" + template.opsForHash().get("user200" + i, "age"));
+                        template.opsForHash().get("user200" + i, "age");
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 }
             });
         }
         es.shutdown();
-        while (!es.awaitTermination(10, TimeUnit.SECONDS)) {
-            System.out.println("....");
-        }
+        es.awaitTermination(60, TimeUnit.SECONDS);
     }
 
 }

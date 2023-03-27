@@ -1,5 +1,6 @@
 package com.lmx.jredis.transport;
 
+import com.google.common.base.Stopwatch;
 import com.lmx.jredis.core.PubSubHelper;
 import com.lmx.jredis.core.RedisCommandInvoker;
 import com.lmx.jredis.core.queue.BlockingQueueHelper;
@@ -30,6 +31,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<Command> {
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, Command msg) throws Exception {
+        Stopwatch stopwatch = new Stopwatch().start();
         Reply reply = invoker.handlerEvent(ctx, msg);
         if (reply == QUIT) {
             ctx.close();
@@ -51,6 +53,9 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<Command> {
                 }
             }
             ctx.write(reply);
+            stopwatch.stop();
+            if (stopwatch.elapsedMillis() > 1)
+                log.error("process cost {}ms", stopwatch.elapsedMillis());
         }
     }
 
@@ -65,6 +70,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<Command> {
     }
 
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+        log.error("connect error: {}", ctx.channel(), cause);
         releaseConn(ctx);
     }
 
@@ -72,6 +78,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<Command> {
         busHelper.unSubscriber(ctx);
         BlockingQueueHelper.getInstance().remListener(ctx);
         ctx.close();
+        ctx.channel().close();
     }
 
     @Override
