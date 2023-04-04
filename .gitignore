@@ -4,3 +4,4 @@
 /protol/target/classes/redis/
 /storage/target/classes/com/lmx/jredis/storage/
 /transport/target/
+/transport/data/
